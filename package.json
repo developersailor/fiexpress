@@ -11,13 +11,13 @@
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
   },
-  "homepage": "https://github.com/fiskindal/fiexpress#readme",
+  "homepage": "https://github.com/developersailor/fiexpress#readme",
   "bugs": {
-    "url": "https://github.com/fiskindal/fiexpress/issues"
+    "url": "https://github.com/developersailor/fiexpress/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/fiskindal/fiexpress.git"
+    "url": "git+ssh://git@github.com/developersailor/fiexpress.git"
   },
   "license": "MIT",
   "author": "Mehmet Fiskindal",
@@ -25,6 +25,14 @@
   "main": "index.js",
   "bin": {
     "create-fiexpress": "bin/create-fiexpress.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "lint": "eslint --fix .",
@@ -34,7 +42,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-  "degit": "^2.8.0",
+    "degit": "^2.8.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
