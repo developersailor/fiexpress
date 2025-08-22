@@ -70,6 +70,7 @@ async function main() {
       // Post-clone scaffolding based on options
       // For simplicity we read options from environment variables set earlier via prompts
       const targetRoot = path.resolve(process.cwd(), dir);
+      const ext = process.env.FIEXPRESS_TS === "yes" ? "ts" : "js";
 
       // dotenv
       if (process.env.FIEXPRESS_DOTENV === "yes") {
@@ -118,19 +119,19 @@ async function main() {
           toInstall.deps["pg"] = "^8.11.0";
           toInstall.deps["pg-hstore"] = "^2.3.4";
           writeFileSafe(
-            path.join(targetRoot, "src", "db", "sequelize.js"),
+            path.join(targetRoot, "src", "db", `sequelize.${ext}`),
             `import { Sequelize } from 'sequelize';\nexport const sequelize = new Sequelize(process.env.DB_URL || 'postgres://localhost/db');\n`,
           );
           writeFileSafe(
-            path.join(targetRoot, "src", "models", "User.js"),
-            `import { DataTypes } from 'sequelize';\nimport { sequelize } from '../db/sequelize.js';\nexport const User = sequelize.define('User', {\n  email: { type: DataTypes.STRING, unique: true },\n  name: DataTypes.STRING,\n});\n`,
+            path.join(targetRoot, "src", "models", `User.${ext}`),
+            `import { DataTypes } from 'sequelize';\nimport { sequelize } from '../db/sequelize.${ext}';\nexport const User = sequelize.define('User', {\n  email: { type: DataTypes.STRING, unique: true },\n  name: DataTypes.STRING,\n});\n`,
           );
           console.log("Added sequelize stubs");
         } else if (orm === "drizzle") {
           toInstall.deps["drizzle-orm"] = "^1.0.0";
           toInstall.deps["pg"] = "^8.11.0";
           writeFileSafe(
-            path.join(targetRoot, "src", "db", "drizzle.js"),
+            path.join(targetRoot, "src", "db", `drizzle.${ext}`),
             `// drizzle-orm connection stub\nimport { drizzle } from 'drizzle-orm/node-postgres';\n// configure with pg pool\n`,
           );
           console.log("Added drizzle stubs");
@@ -143,14 +144,14 @@ async function main() {
         if (db === "mongo") {
           toInstall.deps["mongoose"] = "^7.6.0";
           writeFileSafe(
-            path.join(targetRoot, "src", "db", "mongo.js"),
+            path.join(targetRoot, "src", "db", `mongo.${ext}`),
             `import mongoose from 'mongoose';\nexport async function connect(url){\n  return mongoose.connect(url);\n}\n`,
           );
           console.log("Added MongoDB connection stub");
         } else if (db === "postgres") {
           toInstall.deps["pg"] = "^8.11.0";
           writeFileSafe(
-            path.join(targetRoot, "src", "db", "postgres.js"),
+            path.join(targetRoot, "src", "db", `postgres.${ext}`),
             `import { Pool } from 'pg';\nexport function getPool(cfg){\n  return new Pool(cfg);\n}\n`,
           );
           console.log("Added Postgres connection stub");
@@ -172,12 +173,7 @@ async function main() {
       if (process.env.FIEXPRESS_CASL === "yes") {
         toInstall.deps["@casl/ability"] = "^6.4.0";
         writeFileSafe(
-          path.join(
-            targetRoot,
-            "src",
-            "auth",
-            `casl.${process.env.FIEXPRESS_TS === "yes" ? "ts" : "js"}`,
-          ),
+          path.join(targetRoot, "src", "auth", `casl.${ext}`),
           `// CASL ability stub\nimport { Ability } from '@casl/ability';\nexport const defineAbility = (user) => new Ability([]);\n`,
         );
         console.log("Added CASL stub");
@@ -185,12 +181,7 @@ async function main() {
 
       if (process.env.FIEXPRESS_ROLES === "yes") {
         writeFileSafe(
-          path.join(
-            targetRoot,
-            "src",
-            "middleware",
-            `roles.${process.env.FIEXPRESS_TS === "yes" ? "ts" : "js"}`,
-          ),
+          path.join(targetRoot, "src", "middleware", `roles.${ext}`),
           `export function requireRole(role){\n  return (req,res,next)=>{\n    if(req.user && req.user.role===role) return next();\n    res.status(403).end();\n  }\n}\n`,
         );
         console.log("Added role-based middleware stub");
