@@ -26,12 +26,11 @@ Non-interaktif (örnek flags):
 
 ```bash
 # basit flag desteği ile non-interaktif örnek
-npx create-fiexpress --name my-backend --db postgres --orm prisma --dotenv yes --jwt yes --casl no --user yes --roles yes --ts yes
+npx create-fiexpress --name my-backend --orm prisma --dotenv yes --jwt yes --casl no --user yes --roles yes --ts yes
 ```
 
 CLI şu opsiyonları sorar ve seçime göre scaffolding ekler:
 
-- Database: none | mongo | postgres
 - ORM: none | prisma | sequelize | drizzle
 - dotenv: yes | no (adds `.env.example`)
 - JWT auth: yes | no

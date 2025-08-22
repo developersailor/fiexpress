@@ -40,7 +40,6 @@ async function main() {
 
   // if flags provided, use them; otherwise prompt interactively
   let name = flags.name;
-  let db = flags.db;
   let orm = flags.orm;
   let dotenvOpt = flags.dotenv;
   let jwt = flags.jwt;
@@ -49,20 +48,9 @@ async function main() {
   let roles = flags.roles;
   let ts = flags.ts;
 
-  if (
-    !name ||
-    !db ||
-    !orm ||
-    !dotenvOpt ||
-    !jwt ||
-    !casl ||
-    !user ||
-    !roles ||
-    !ts
-  ) {
+  if (!name || !orm || !dotenvOpt || !jwt || !casl || !user || !roles || !ts) {
     // some flags missing, prompt for any that are undefined
     name = name || (await question("New project directory name [my-app]: "));
-    db = db || (await question("Database (none/mongo/postgres) [none]: "));
     orm =
       orm || (await question("ORM (none/prisma/sequelize/drizzle) [none]: "));
     dotenvOpt =
@@ -90,7 +78,6 @@ async function main() {
   const dir = name || "my-app";
 
   // persist options for post-clone step
-  process.env.FIEXPRESS_DB = (db || "none").toLowerCase();
   process.env.FIEXPRESS_ORM = (orm || "none").toLowerCase();
   process.env.FIEXPRESS_DOTENV = (dotenvOpt || "yes").toLowerCase();
   process.env.FIEXPRESS_JWT = (jwt || "no").toLowerCase();
@@ -177,26 +164,6 @@ async function main() {
             `// drizzle-orm connection stub\nimport { drizzle } from 'drizzle-orm/node-postgres';\n// configure with pg pool\n`,
           );
           console.log("Added drizzle stubs");
-        }
-      }
-
-      // DB connection stubs (non-ORM)
-      if (process.env.FIEXPRESS_DB && process.env.FIEXPRESS_DB !== "none") {
-        const db = process.env.FIEXPRESS_DB;
-        if (db === "mongo") {
-          toInstall.deps["mongoose"] = "^7.6.0";
-          writeFileSafe(
-            path.join(targetRoot, "src", "db", `mongo.${ext}`),
-            `import mongoose from 'mongoose';\nexport async function connect(url){\n  return mongoose.connect(url);\n}\n`,
-          );
-          console.log("Added MongoDB connection stub");
-        } else if (db === "postgres") {
-          toInstall.deps["pg"] = "^8.11.0";
-          writeFileSafe(
-            path.join(targetRoot, "src", "db", `postgres.${ext}`),
-            `import { Pool } from 'pg';\nexport function getPool(cfg){\n  return new Pool(cfg);\n}\n`,
-          );
-          console.log("Added Postgres connection stub");
         }
       }
 
