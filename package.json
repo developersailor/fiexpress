@@ -1,0 +1,53 @@
+{
+  "name": "fiexpress",
+  "version": "1.0.0",
+  "description": "my express backend development dependencies",
+  "keywords": [
+    "expressjs",
+    "nodejs",
+    "express",
+    "node"
+  ],
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  },
+  "homepage": "https://github.com/fiskindal/fiexpress#readme",
+  "bugs": {
+    "url": "https://github.com/fiskindal/fiexpress/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/fiskindal/fiexpress.git"
+  },
+  "license": "MIT",
+  "author": "Mehmet Fiskindal",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "create-fiexpress": "bin/create-fiexpress.js"
+  },
+  "scripts": {
+    "lint": "eslint --fix .",
+    "format": "prettier --write .",
+    "prepare": "husky",
+    "test": "jest --runInBand"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+  "degit": "^2.8.0",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "jest": "^30.0.5",
+    "lint-staged": "^16.1.5",
+    "prettier": "3.6.2",
+    "supertest": "^7.1.4"
+  }
+}
