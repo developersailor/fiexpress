@@ -246,6 +246,43 @@ async function main() {
       // Merge and write package.json
       addDepsToPackageJson(toInstall.deps, toInstall.dev);
 
+      // sanitize generated project: remove CLI artifacts (bin, degit dep, publishConfig/files, repository/homepage/bugs)
+      function sanitizeGeneratedPackageJson() {
+        const pkgPath = path.join(targetRoot, "package.json");
+        try {
+          const raw = fs.readFileSync(pkgPath, "utf8");
+          const pkg = JSON.parse(raw);
+
+          // set sensible name
+          pkg.name = pkg.name && pkg.name !== "" ? pkg.name : dir;
+
+          // remove CLI entrypoint
+          if (pkg.bin) delete pkg.bin;
+
+          // remove degit if present (CLI-only)
+          if (pkg.dependencies && pkg.dependencies.degit)
+            delete pkg.dependencies.degit;
+
+          // remove publishing metadata that ties to generator
+          if (pkg.publishConfig) delete pkg.publishConfig;
+          if (pkg.files) delete pkg.files;
+
+          // remove repository/homepage/bugs pointing to template
+          if (pkg.repository) delete pkg.repository;
+          if (pkg.homepage) delete pkg.homepage;
+          if (pkg.bugs) delete pkg.bugs;
+
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+          console.log(
+            "Sanitized generated package.json (removed CLI artifacts)",
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      sanitizeGeneratedPackageJson();
+
       console.log("Scaffolding complete. Next steps:");
       console.log("  cd", dir);
       console.log("  npm install");
