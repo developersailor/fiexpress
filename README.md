@@ -1,10 +1,19 @@
 # fiexpress
 
-Lightweight Express backend starter and dev dependencies.
+A lightweight Express.js backend starter template and generator.
 
-## Hızlı başlat (degit)
+## Features
 
-Public şablonu doğrudan kopyalamak için:
+- **Interactive CLI**: `npx create-fiexpress` guides you through project setup.
+- **Non-Interactive Mode**: Automate project creation using command-line flags.
+- **Database & ORM Scaffolding**: Choose from PostgreSQL, MySQL, or MongoDB, with support for Prisma, Sequelize, Drizzle, and Mongoose.
+- **TypeScript Support**: Generates a `tsconfig.json` and adds necessary TypeScript dependencies.
+- **Essential Tooling**: Includes stubs for `.env` configuration, JWT authentication, CASL for authorization, user routes, and role-based middleware.
+- **Clean Output**: The generated project is sanitized, containing no artifacts from the generator itself.
+
+## Quick Start (degit)
+
+To clone the base template directly without any scaffolding:
 
 ```bash
 npx degit developersailor/fiexpress my-app
@@ -12,67 +21,62 @@ cd my-app
 npm install
 ```
 
-## CLI: `create-fiexpress`
+## Usage with `create-fiexpress`
 
-Yerel CLI, interaktif olarak veya flags ile projenizi oluşturmanıza yardımcı olur.
+### Interactive Mode
 
-Interaktif:
+For a guided setup, run the CLI without any arguments:
 
 ```bash
 npx create-fiexpress
 ```
 
-Non-interaktif (örnek flags):
+The CLI will prompt you for the project name and scaffolding options.
+
+### Non-Interactive Mode
+
+You can also provide all options as command-line flags to create a project non-interactively. This is ideal for automation and CI/CD pipelines.
+
+**Example:**
 
 ```bash
-# basit flag desteği ile non-interaktif örnek
-npx create-fiexpress --name my-backend --orm prisma --dotenv yes --jwt yes --casl no --user yes --roles yes --ts yes
+npx create-fiexpress \
+  --name my-api \
+  --db postgres \
+  --orm prisma \
+  --ts yes \
+  --dotenv yes \
+  --jwt yes \
+  --casl yes \
+  --user yes \
+  --roles yes
 ```
 
-CLI şu opsiyonları sorar ve seçime göre scaffolding ekler:
+### Scaffolding Options
 
-- ORM: none | prisma | sequelize | drizzle
+- `--name`: The name of the new project directory.
+- `--db`: The database to use (`postgres`, `mysql`, `mongo`).
+- `--orm`: The ORM to use (`prisma`, `sequelize`, `drizzle`, `mongoose`). If not provided, a sensible default is chosen based on the database (e.g., `sequelize` for SQL, `mongoose` for MongoDB).
+- `--ts`: Enable TypeScript support (`yes`/`no`).
+- `--dotenv`: Add `.env.example` for environment variables (`yes`/`no`).
+- `--jwt`: Include JWT authentication helpers (`yes`/`no`).
+- `--casl`: Include CASL authorization stubs (`yes`/`no`).
+- `--user`: Add example user routes and model (`yes`/`no`).
+- `--roles`: Add role-based middleware helpers (`yes`/`no`).
 
-Not: Ayrıca `--db` ile veri tabanı tipi belirtebilirsiniz (postgres | mysql | mongo). Eğer `--orm` seçilmezse generator DB tipine göre makul bir ORM seçer (ör. SQL için `sequelize`, Mongo için `mongoose`).
+## Testing
 
-- dotenv: yes | no (adds `.env.example`)
-- JWT auth: yes | no
-- CASL: yes | no
-- user routes: yes | no
-- role-based helpers: yes | no
-- TypeScript: yes | no
+This repository includes a smoke test to ensure the generator works correctly across all options. To run it:
 
-Seçimlerinizin sonucu olarak:
+```bash
+npm run smoke-test
+```
 
-- ilgili ORM kütüphaneleri ve stub dosyaları (ör. `prisma/schema.prisma`, `src/db/*`)
-- `.env.example` ve `src/auth` içinde JWT/CASL yardımcıları
-- `src/routes/user.js` veya `.ts` stub
-- `tsconfig.json` eklenecekse TypeScript devDependencies paketleri `package.json` içine eklenecektir
+This will create a temporary project, run the generator with a full set of options, and verify that the output is correct and sanitized.
 
-Not: Oluşturulan projede hemen çalıştırmak için generator minimal bir "app entry" (ör. `src/index.js` veya `src/index.ts`) ve `package.json` içinde `start` script ekler. Bununla birlikte `npm install` çalıştırılması gereklidir.
+## Changelog
 
-## Örnek akış
-
-1. `npx create-fiexpress` çalıştırın.
-2. Promptlarda `postgres`, `prisma`, `yes` (dotenv), `yes` (jwt), `yes` (casl), `yes` (user), `yes` (roles), `yes` (ts) gibi seçimler yapın.
-3. Oluşturulan klasöre girip `npm install` çalıştırın.
-
-## Yayınlama ve kullanım notları
-
-- CLI'yi npm'e publish ederseniz kullanıcılar `npx create-fiexpress` ile doğrudan çalıştırabilir.
-- Paket adının benzersiz olmasına dikkat edin (`package.json` içinde `name` alanı).
-- Eğer şablon private ise `degit` erişimi için alternatif yöntem (git clone + remove .git) veya kullanıcının token sağlaması gerekir.
-
-## Geliştirme fikirleri
-
-- CLI'ye arg parsing (`--name`, `--orm`, `--db`, `--ts` vb.) ekleyip CI friendly yapabiliriz.
-- Daha fazla auth scaffold (refresh tokens, OAuth, email verification) eklenebilir.
-
----
-
-Bu repo generator amacıyla geliştirildi; isterseniz şimdi CLI'ye flag arg parsing ekleyip, non-interaktif kullanım ve tam smoke test yapayım.
-
-## CHANGELOG / BREAKING CHANGES
-
-- 2025-08-22: `--db` flag yeniden eklendi. Eğer `--orm` belirtilmezse generator DB tipine göre makul bir ORM seçer (SQL -> `sequelize`, Mongo -> `mongoose`).
-- Eğer hem `--db` hem `--orm` belirtilir ve uyumsuz ise generator `--orm` değerini otomatik olarak DB ile uyumlu olacak şekilde override eder ve konsola uyarı yazar.
+- **2025-08-23**:
+  - Re-introduced the `--db` flag.
+  - The generator now auto-selects a suitable ORM if one isn't specified.
+  - If `--db` and `--orm` are specified and conflict, the generator will override the ORM to match the database and issue a warning.

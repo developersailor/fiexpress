@@ -38,7 +38,8 @@
     "lint": "eslint --fix .",
     "format": "prettier --write .",
     "prepare": "husky",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "smoke-test": "node scripts/smoke-test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
