@@ -21,14 +21,14 @@ cd my-app
 npm install
 ```
 
-## Usage with `create-fiexpress`
+## Usage with `fiexpress`
 
 ### Interactive Mode
 
 For a guided setup, run the CLI without any arguments:
 
 ```bash
-npx create-fiexpress
+npx fiexpress
 ```
 
 The CLI will prompt you for the project name and scaffolding options.
@@ -40,7 +40,7 @@ You can also provide all options as command-line flags to create a project non-i
 **Example:**
 
 ```bash
-npx create-fiexpress \
+npx fiexpress \
   --name my-api \
   --db postgres \
   --orm prisma \
