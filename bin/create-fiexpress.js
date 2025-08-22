@@ -21,26 +21,68 @@ function writeFileSafe(targetPath, content) {
 
 async function main() {
   console.log("fiexpress project creator (degit)");
+  // simple flag parsing for non-interactive usage
+  const argv = process.argv.slice(2);
+  const flags = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith("--")) {
+      const key = a.replace(/^--+/, "");
+      const next = argv[i + 1];
+      if (next && !next.startsWith("--")) {
+        flags[key] = next;
+        i++;
+      } else {
+        flags[key] = "yes";
+      }
+    }
+  }
 
-  const name = await question("New project directory name [my-app]: ");
+  // if flags provided, use them; otherwise prompt interactively
+  let name = flags.name;
+  let db = flags.db;
+  let orm = flags.orm;
+  let dotenvOpt = flags.dotenv;
+  let jwt = flags.jwt;
+  let casl = flags.casl;
+  let user = flags.user;
+  let roles = flags.roles;
+  let ts = flags.ts;
 
-  // Options
-  const db = await question("Database (none/mongo/postgres) [none]: ");
-  const orm = await question("ORM (none/prisma/sequelize/drizzle) [none]: ");
-  const dotenvOpt = await question(
-    "Add dotenv config (.env.example)? (yes/no) [yes]: ",
-  );
-  const jwt = await question("Include JWT auth scaffolding? (yes/no) [no]: ");
-  const casl = await question(
-    "Include CASL (authorization) scaffolding? (yes/no) [no]: ",
-  );
-  const user = await question(
-    "Include example user model/routes? (yes/no) [no]: ",
-  );
-  const roles = await question(
-    "Include role-based auth helpers? (yes/no) [no]: ",
-  );
-  const ts = await question("Enable TypeScript? (yes/no) [no]: ");
+  if (
+    !name ||
+    !db ||
+    !orm ||
+    !dotenvOpt ||
+    !jwt ||
+    !casl ||
+    !user ||
+    !roles ||
+    !ts
+  ) {
+    // some flags missing, prompt for any that are undefined
+    name = name || (await question("New project directory name [my-app]: "));
+    db = db || (await question("Database (none/mongo/postgres) [none]: "));
+    orm =
+      orm || (await question("ORM (none/prisma/sequelize/drizzle) [none]: "));
+    dotenvOpt =
+      dotenvOpt ||
+      (await question("Add dotenv config (.env.example)? (yes/no) [yes]: "));
+    jwt =
+      jwt || (await question("Include JWT auth scaffolding? (yes/no) [no]: "));
+    casl =
+      casl ||
+      (await question(
+        "Include CASL (authorization) scaffolding? (yes/no) [no]: ",
+      ));
+    user =
+      user ||
+      (await question("Include example user model/routes? (yes/no) [no]: "));
+    roles =
+      roles ||
+      (await question("Include role-based auth helpers? (yes/no) [no]: "));
+    ts = ts || (await question("Enable TypeScript? (yes/no) [no]: "));
+  }
 
   rl.close();
 
@@ -237,6 +279,47 @@ async function main() {
       // Merge and write package.json
       addDepsToPackageJson(toInstall.deps, toInstall.dev);
 
+      // Ensure generated project has a minimal start script and entrypoint
+      try {
+        const pkgPath = path.join(targetRoot, "package.json");
+        const raw = fs.readFileSync(pkgPath, "utf8");
+        const pkg = JSON.parse(raw);
+        pkg.scripts = pkg.scripts || {};
+        // add start/dev scripts if missing
+        if (!pkg.scripts.start) {
+          pkg.scripts.start =
+            process.env.FIEXPRESS_TS === "yes"
+              ? "node dist/index.js"
+              : "node src/index.js";
+        }
+        if (!pkg.scripts.dev) {
+          pkg.scripts.dev =
+            process.env.FIEXPRESS_TS === "yes"
+              ? "ts-node src/index.ts"
+              : "node src/index.js";
+        }
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+        console.log("Added start/dev scripts to generated package.json");
+      } catch {
+        // ignore
+      }
+
+      // Write a minimal src/index.(js|ts) entry if not present
+      try {
+        const ext = process.env.FIEXPRESS_TS === "yes" ? "ts" : "js";
+        const entryPath = path.join(targetRoot, "src", `index.${ext}`);
+        if (!fs.existsSync(entryPath)) {
+          const content =
+            process.env.FIEXPRESS_TS === "yes"
+              ? `import express from 'express';\nconst app = express();\napp.get('/', (req,res)=>res.send('hello from generated app'));\napp.listen(process.env.PORT||3000, ()=>console.log('listening'));\n`
+              : `const express = require('express');\nconst app = express();\napp.get('/', (req,res)=>res.send('hello from generated app'));\napp.listen(process.env.PORT||3000, ()=>console.log('listening'));\n`;
+          writeFileSafe(entryPath, content);
+          console.log(`Added minimal app entry ${entryPath}`);
+        }
+      } catch {
+        // ignore file write errors
+      }
+
       // sanitize generated project: remove CLI artifacts (bin, degit dep, publishConfig/files, repository/homepage/bugs)
       function sanitizeGeneratedPackageJson() {
         const pkgPath = path.join(targetRoot, "package.json");
@@ -250,9 +333,11 @@ async function main() {
           // remove CLI entrypoint
           if (pkg.bin) delete pkg.bin;
 
-          // remove degit if present (CLI-only)
+          // remove degit if present (CLI-only) from dependencies or devDependencies
           if (pkg.dependencies && pkg.dependencies.degit)
             delete pkg.dependencies.degit;
+          if (pkg.devDependencies && pkg.devDependencies.degit)
+            delete pkg.devDependencies.degit;
 
           // remove publishing metadata that ties to generator
           if (pkg.publishConfig) delete pkg.publishConfig;
@@ -264,14 +349,16 @@ async function main() {
           if (pkg.bugs) delete pkg.bugs;
 
           // remove prepare husky script and husky devDependency if present
+          // remove husky prepare script and husky devDependency if present
           if (
             pkg.scripts &&
             pkg.scripts.prepare &&
             pkg.scripts.prepare.includes("husky")
           ) {
             delete pkg.scripts.prepare;
-            if (pkg.devDependencies && pkg.devDependencies.husky)
-              delete pkg.devDependencies.husky;
+          }
+          if (pkg.devDependencies && pkg.devDependencies.husky) {
+            delete pkg.devDependencies.husky;
           }
 
           // remove any copied CLI files/dirs under the generated project (e.g., bin/create-fiexpress.js)

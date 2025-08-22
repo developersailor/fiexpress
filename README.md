@@ -25,8 +25,8 @@ npx create-fiexpress
 Non-interaktif (örnek flags):
 
 ```bash
-# (Not: şu an CLI arg parsing yok; ileride --name/--orm/--db gibi flag desteği eklenebilir.)
-npx create-fiexpress
+# basit flag desteği ile non-interaktif örnek
+npx create-fiexpress --name my-backend --db postgres --orm prisma --dotenv yes --jwt yes --casl no --user yes --roles yes --ts yes
 ```
 
 CLI şu opsiyonları sorar ve seçime göre scaffolding ekler:
@@ -46,6 +46,8 @@ Seçimlerinizin sonucu olarak:
 - `.env.example` ve `src/auth` içinde JWT/CASL yardımcıları
 - `src/routes/user.js` veya `.ts` stub
 - `tsconfig.json` eklenecekse TypeScript devDependencies paketleri `package.json` içine eklenecektir
+
+Not: Oluşturulan projede hemen çalıştırmak için generator minimal bir "app entry" (ör. `src/index.js` veya `src/index.ts`) ve `package.json` içinde `start` script ekler. Bununla birlikte `npm install` çalıştırılması gereklidir.
 
 ## Örnek akış
 
