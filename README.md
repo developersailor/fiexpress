@@ -32,6 +32,9 @@ npx create-fiexpress --name my-backend --orm prisma --dotenv yes --jwt yes --cas
 CLI şu opsiyonları sorar ve seçime göre scaffolding ekler:
 
 - ORM: none | prisma | sequelize | drizzle
+
+Not: Ayrıca `--db` ile veri tabanı tipi belirtebilirsiniz (postgres | mysql | mongo). Eğer `--orm` seçilmezse generator DB tipine göre makul bir ORM seçer (ör. SQL için `sequelize`, Mongo için `mongoose`).
+
 - dotenv: yes | no (adds `.env.example`)
 - JWT auth: yes | no
 - CASL: yes | no
@@ -68,3 +71,8 @@ Not: Oluşturulan projede hemen çalıştırmak için generator minimal bir "app
 ---
 
 Bu repo generator amacıyla geliştirildi; isterseniz şimdi CLI'ye flag arg parsing ekleyip, non-interaktif kullanım ve tam smoke test yapayım.
+
+## CHANGELOG / BREAKING CHANGES
+
+- 2025-08-22: `--db` flag yeniden eklendi. Eğer `--orm` belirtilmezse generator DB tipine göre makul bir ORM seçer (SQL -> `sequelize`, Mongo -> `mongoose`).
+- Eğer hem `--db` hem `--orm` belirtilir ve uyumsuz ise generator `--orm` değerini otomatik olarak DB ile uyumlu olacak şekilde override eder ve konsola uyarı yazar.

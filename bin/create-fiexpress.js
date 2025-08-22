@@ -40,6 +40,7 @@ async function main() {
 
   // if flags provided, use them; otherwise prompt interactively
   let name = flags.name;
+  let db = flags.db;
   let orm = flags.orm;
   let dotenvOpt = flags.dotenv;
   let jwt = flags.jwt;
@@ -48,9 +49,20 @@ async function main() {
   let roles = flags.roles;
   let ts = flags.ts;
 
-  if (!name || !orm || !dotenvOpt || !jwt || !casl || !user || !roles || !ts) {
+  if (
+    !name ||
+    !db ||
+    !orm ||
+    !dotenvOpt ||
+    !jwt ||
+    !casl ||
+    !user ||
+    !roles ||
+    !ts
+  ) {
     // some flags missing, prompt for any that are undefined
     name = name || (await question("New project directory name [my-app]: "));
+    db = db || (await question("Database (postgres/mysql/mongo) [postgres]: "));
     orm =
       orm || (await question("ORM (none/prisma/sequelize/drizzle) [none]: "));
     dotenvOpt =
@@ -78,6 +90,7 @@ async function main() {
   const dir = name || "my-app";
 
   // persist options for post-clone step
+  process.env.FIEXPRESS_DB = (db || "postgres").toLowerCase();
   process.env.FIEXPRESS_ORM = (orm || "none").toLowerCase();
   process.env.FIEXPRESS_DOTENV = (dotenvOpt || "yes").toLowerCase();
   process.env.FIEXPRESS_JWT = (jwt || "no").toLowerCase();
@@ -85,6 +98,46 @@ async function main() {
   process.env.FIEXPRESS_USER = (user || "no").toLowerCase();
   process.env.FIEXPRESS_ROLES = (roles || "no").toLowerCase();
   process.env.FIEXPRESS_TS = (ts || "no").toLowerCase();
+
+  // detect potential conflict between db and orm and confirm if interactive
+  const dbVal = process.env.FIEXPRESS_DB;
+  const ormVal = process.env.FIEXPRESS_ORM;
+  const mapDbToOrm = (d) => {
+    if (!d) return null;
+    if (d === "mongo") return "mongoose";
+    if (d === "postgres" || d === "mysql") return "sequelize";
+    return "sequelize";
+  };
+  const suggestedOrm = mapDbToOrm(dbVal);
+  if (suggestedOrm && ormVal && suggestedOrm !== ormVal) {
+    // interactive prompt if possible
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      const confirmRl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+      const answer = await new Promise((res) =>
+        confirmRl.question(
+          `Conflict: --db='${dbVal}' and --orm='${ormVal}' look incompatible. Change ORM to '${suggestedOrm}'? (yes/no) [yes]: `,
+          (a) => res(a.trim()),
+        ),
+      );
+      confirmRl.close();
+      if (answer === "" || answer.toLowerCase().startsWith("y")) {
+        process.env.FIEXPRESS_ORM = suggestedOrm;
+        console.log(
+          `Overriding ORM to '${suggestedOrm}' to match DB '${dbVal}'`,
+        );
+      } else {
+        console.log(`Keeping ORM='${ormVal}' as requested`);
+      }
+    } else {
+      console.warn(
+        `Warning: provided --db='${dbVal}' conflicts with --orm='${ormVal}'; overriding ORM to '${suggestedOrm}' to match DB.`,
+      );
+      process.env.FIEXPRESS_ORM = suggestedOrm;
+    }
+  }
 
   console.log(`Cloning ${repoSpec} into ./${dir} using degit...`);
 
@@ -132,12 +185,50 @@ async function main() {
 
       const toInstall = { deps: {}, dev: {} };
 
+      // If ORM not selected but DB provided, choose sensible default
+      const selectedDb = process.env.FIEXPRESS_DB;
+      let selectedOrm = process.env.FIEXPRESS_ORM;
+      if ((!selectedOrm || selectedOrm === "none") && selectedDb) {
+        if (selectedDb === "mongo")
+          selectedOrm = "mongoose"; // treat as mongoose flow
+        else if (selectedDb === "postgres" || selectedDb === "mysql")
+          selectedOrm = "sequelize";
+        else selectedOrm = "sequelize";
+        console.log(
+          `Auto-selected ORM '${selectedOrm}' for DB '${selectedDb}'`,
+        );
+      }
+
+      // If user provided both and they conflict, warn and override orm based on db
+      const userProvidedDb = !!flags.db;
+      const userProvidedOrm = !!flags.orm;
+      if (
+        userProvidedDb &&
+        userProvidedOrm &&
+        selectedOrm &&
+        selectedOrm !== process.env.FIEXPRESS_ORM
+      ) {
+        console.warn(
+          `Warning: provided --db='${selectedDb}' conflicts with --orm='${process.env.FIEXPRESS_ORM}'; overriding ORM to '${selectedOrm}' to match DB.`,
+        );
+      }
+
+      // normalize back to env for the rest of the script
+      process.env.FIEXPRESS_ORM = selectedOrm;
+
       // ORM support
       const orm = process.env.FIEXPRESS_ORM;
+      const dbForDriver = process.env.FIEXPRESS_DB;
       if (orm && orm !== "none") {
         if (orm === "prisma") {
           toInstall.deps["@prisma/client"] = "^5.0.0";
           toInstall.dev["prisma"] = "^5.0.0";
+          // add underlying driver for prisma if known
+          if (dbForDriver === "mysql") {
+            toInstall.deps["mysql2"] = "^3.5.0";
+          } else if (dbForDriver === "postgres") {
+            toInstall.deps["pg"] = "^8.11.0";
+          }
           writeFileSafe(
             path.join(targetRoot, "prisma", "schema.prisma"),
             `generator client {\n  provider = "prisma-client-js"\n}\n\nmodel User {\n  id String @id @default(cuid())\n  email String @unique\n  name String?\n}\n`,
@@ -145,8 +236,13 @@ async function main() {
           console.log("Added prisma schema stub");
         } else if (orm === "sequelize") {
           toInstall.deps["sequelize"] = "^6.32.1";
-          toInstall.deps["pg"] = "^8.11.0";
-          toInstall.deps["pg-hstore"] = "^2.3.4";
+          // choose driver based on DB
+          if (dbForDriver === "mysql") {
+            toInstall.deps["mysql2"] = "^3.5.0";
+          } else {
+            toInstall.deps["pg"] = "^8.11.0";
+            toInstall.deps["pg-hstore"] = "^2.3.4";
+          }
           writeFileSafe(
             path.join(targetRoot, "src", "db", `sequelize.${ext}`),
             `import { Sequelize } from 'sequelize';\nexport const sequelize = new Sequelize(process.env.DB_URL || 'postgres://localhost/db');\n`,
@@ -158,12 +254,24 @@ async function main() {
           console.log("Added sequelize stubs");
         } else if (orm === "drizzle") {
           toInstall.deps["drizzle-orm"] = "^1.0.0";
-          toInstall.deps["pg"] = "^8.11.0";
+          if (dbForDriver === "mysql") {
+            toInstall.deps["mysql2"] = "^3.5.0";
+          } else {
+            toInstall.deps["pg"] = "^8.11.0";
+          }
           writeFileSafe(
             path.join(targetRoot, "src", "db", `drizzle.${ext}`),
             `// drizzle-orm connection stub\nimport { drizzle } from 'drizzle-orm/node-postgres';\n// configure with pg pool\n`,
           );
           console.log("Added drizzle stubs");
+        } else if (orm === "mongoose" || orm === "mongo") {
+          // mongoose path
+          toInstall.deps["mongoose"] = "^7.6.0";
+          writeFileSafe(
+            path.join(targetRoot, "src", "db", `mongo.${ext}`),
+            `import mongoose from 'mongoose';\nexport async function connect(url){\n  return mongoose.connect(url);\n}\n`,
+          );
+          console.log("Added Mongoose stubs");
         }
       }
 
