@@ -2,30 +2,68 @@
 
 Lightweight Express backend starter and dev dependencies.
 
-## Kullanım (degit ile)
+## Hızlı başlat (degit)
 
-Eğer projeyi degit ile klonlamak isterseniz:
+Public şablonu doğrudan kopyalamak için:
 
 ```bash
-npx degit fiskindal/fiexpress my-app
+npx degit developersailor/fiexpress my-app
 cd my-app
 npm install
 ```
 
-## `npm create` (yerel CLI)
+## CLI: `create-fiexpress`
 
-Paket yüklendiğinde `create-fiexpress` adlı bir CLI sağlanır:
+Yerel CLI, interaktif olarak veya flags ile projenizi oluşturmanıza yardımcı olur.
+
+Interaktif:
 
 ```bash
 npx create-fiexpress
-# veya global olarak kurup
-npm i -g .
-create-fiexpress
 ```
 
-CLI sizi repo ve yeni dizin adı sorması için yönlendirir ve `degit` ile şablonu kopyalar.
+Non-interaktif (örnek flags):
 
-## Notlar
+```bash
+# (Not: şu an CLI arg parsing yok; ileride --name/--orm/--db gibi flag desteği eklenebilir.)
+npx create-fiexpress
+```
 
-- `degit` kullanıldığı için kaynak commit geçmişi kopyalanmaz, sadece dosyalar alınır.
-- Eğer `npx create-fiexpress` çalışmazsa, `npx degit fiskindal/fiexpress my-app` komutunu kullanın.
+CLI şu opsiyonları sorar ve seçime göre scaffolding ekler:
+
+- Database: none | mongo | postgres
+- ORM: none | prisma | sequelize | drizzle
+- dotenv: yes | no (adds `.env.example`)
+- JWT auth: yes | no
+- CASL: yes | no
+- user routes: yes | no
+- role-based helpers: yes | no
+- TypeScript: yes | no
+
+Seçimlerinizin sonucu olarak:
+
+- ilgili ORM kütüphaneleri ve stub dosyaları (ör. `prisma/schema.prisma`, `src/db/*`)
+- `.env.example` ve `src/auth` içinde JWT/CASL yardımcıları
+- `src/routes/user.js` veya `.ts` stub
+- `tsconfig.json` eklenecekse TypeScript devDependencies paketleri `package.json` içine eklenecektir
+
+## Örnek akış
+
+1. `npx create-fiexpress` çalıştırın.
+2. Promptlarda `postgres`, `prisma`, `yes` (dotenv), `yes` (jwt), `yes` (casl), `yes` (user), `yes` (roles), `yes` (ts) gibi seçimler yapın.
+3. Oluşturulan klasöre girip `npm install` çalıştırın.
+
+## Yayınlama ve kullanım notları
+
+- CLI'yi npm'e publish ederseniz kullanıcılar `npx create-fiexpress` ile doğrudan çalıştırabilir.
+- Paket adının benzersiz olmasına dikkat edin (`package.json` içinde `name` alanı).
+- Eğer şablon private ise `degit` erişimi için alternatif yöntem (git clone + remove .git) veya kullanıcının token sağlaması gerekir.
+
+## Geliştirme fikirleri
+
+- CLI'ye arg parsing (`--name`, `--orm`, `--db`, `--ts` vb.) ekleyip CI friendly yapabiliriz.
+- Daha fazla auth scaffold (refresh tokens, OAuth, email verification) eklenebilir.
+
+---
+
+Bu repo generator amacıyla geliştirildi; isterseniz şimdi CLI'ye flag arg parsing ekleyip, non-interaktif kullanım ve tam smoke test yapayım.
