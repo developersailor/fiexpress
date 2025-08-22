@@ -263,6 +263,37 @@ async function main() {
           if (pkg.homepage) delete pkg.homepage;
           if (pkg.bugs) delete pkg.bugs;
 
+          // remove prepare husky script and husky devDependency if present
+          if (
+            pkg.scripts &&
+            pkg.scripts.prepare &&
+            pkg.scripts.prepare.includes("husky")
+          ) {
+            delete pkg.scripts.prepare;
+            if (pkg.devDependencies && pkg.devDependencies.husky)
+              delete pkg.devDependencies.husky;
+          }
+
+          // remove any copied CLI files/dirs under the generated project (e.g., bin/create-fiexpress.js)
+          try {
+            const binDir = path.join(targetRoot, "bin");
+            if (fs.existsSync(binDir)) {
+              fs.rmSync(binDir, { recursive: true, force: true });
+              console.log(
+                "Removed copied bin/ directory from generated project",
+              );
+            }
+            const cliFile = path.join(targetRoot, "create-fiexpress.js");
+            if (fs.existsSync(cliFile)) {
+              fs.rmSync(cliFile, { force: true });
+              console.log(
+                "Removed copied create-fiexpress.js from generated project root",
+              );
+            }
+          } catch {
+            // ignore file system cleanup errors
+          }
+
           fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
           console.log(
             "Sanitized generated package.json (removed CLI artifacts)",
