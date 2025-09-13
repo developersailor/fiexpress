@@ -4774,22 +4774,28 @@ async function main() {
       // Default to 'new' command
       console.log("🚀 FiExpress CLI - Creating new Express.js project");
       
-    const flags = {};
+      const flags = {};
       const args = command === 'new' ? argv.slice(1) : argv;
+      
+      // First argument is the project name (if not a flag)
+      if (args.length > 0 && !args[0].startsWith("--")) {
+        flags.name = args[0];
+        args.shift(); // Remove the name from args
+      }
       
       for (let i = 0; i < args.length; i++) {
         const a = args[i];
-      if (a.startsWith("--")) {
-        const key = a.replace(/^--+/, "");
+        if (a.startsWith("--")) {
+          const key = a.replace(/^--+/, "");
           const next = args[i + 1];
-        if (next && !next.startsWith("--")) {
-          flags[key] = next;
-          i++;
-        } else {
-          flags[key] = "yes";
+          if (next && !next.startsWith("--")) {
+            flags[key] = next;
+            i++;
+          } else {
+            flags[key] = "yes";
+          }
         }
       }
-    }
 
       await createNewProject(flags);
     } else if (command === 'generate' || command === 'g') {
@@ -4833,71 +4839,23 @@ async function createNewProject(flags) {
     let jest = flags.jest;
     let demo = flags.demo;
 
-    if (
-      !name ||
-      !db ||
-      !orm ||
-      !dotenvOpt ||
-      !jwt ||
-      !casl ||
-      !user ||
-      !roles ||
-      !ts
-    ) {
-      name =
-        name ||
-        (await question("New project directory name [my-app]: ")) ||
-        "my-app";
-      db =
-        db ||
-        (await question("Database (postgres/mysql/mongo) [postgres]: ")) ||
-        "postgres";
-      orm =
-        orm ||
-        (await question(
-          "ORM (none/prisma/sequelize/drizzle/mongoose) [none]: ",
-        )) ||
-        "none";
-      dotenvOpt =
-        dotenvOpt ||
-        (await question(
-          "Add dotenv config (.env.example)? (yes/no) [yes]: ",
-        )) ||
-        "yes";
-      jwt =
-        jwt ||
-        (await question("Include JWT auth scaffolding? (yes/no) [no]: ")) ||
-        "no";
-      casl =
-        casl ||
-        (await question(
-          "Include CASL (authorization) scaffolding? (yes/no) [no]: ",
-        )) ||
-        "no";
-      user =
-        user ||
-        (await question(
-          "Include example user model/routes? (yes/no) [no]: ",
-        )) ||
-        "no";
-      roles =
-        roles ||
-        (await question("Include role-based auth helpers? (yes/no) [no]: ")) ||
-        "no";
-      ts = ts || (await question("Enable TypeScript? (yes/no) [no]: ")) || "no";
-      tsyringe =
-        tsyringe ||
-        (await question("Enable tsyringe dependency injection? (yes/no) [no]: ")) ||
-        "no";
-      jest =
-        jest ||
-        (await question("Include Jest testing framework? (yes/no) [no]: ")) ||
-        "no";
-      demo =
-        demo ||
-        (await question("Create demo app? (weather/todo/blog/none) [none]: ")) ||
-        "none";
+    // Only ask for missing required parameters
+    if (!name) {
+      name = (await question("New project directory name [my-app]: ")) || "my-app";
     }
+    
+    // Set defaults for optional parameters if not provided
+    db = db || "postgres";
+    orm = orm || "none";
+    dotenvOpt = dotenvOpt || "yes";
+    jwt = jwt || "no";
+    casl = casl || "no";
+    user = user || "no";
+    roles = roles || "no";
+    ts = ts || "no";
+    tsyringe = tsyringe || "no";
+    jest = jest || "no";
+    demo = demo || "none";
 
     rl.close();
 
@@ -4924,34 +4882,11 @@ async function createNewProject(flags) {
       if (d === "postgres" || d === "mysql") return "sequelize";
       return "sequelize";
     };
+    // Auto-select compatible ORM if not specified
     const suggestedOrm = mapDbToOrm(dbVal);
-    if (suggestedOrm && ormVal && suggestedOrm !== ormVal) {
-      if (process.stdin.isTTY && process.stdout.isTTY) {
-        const confirmRl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-        const answer = await new Promise((res) =>
-          confirmRl.question(
-            `Conflict: --db='${dbVal}' and --orm='${ormVal}' look incompatible. Change ORM to '${suggestedOrm}'? (yes/no) [yes]: `,
-            (a) => res(a.trim()),
-          ),
-        );
-        confirmRl.close();
-        if (answer === "" || answer.toLowerCase().startsWith("y")) {
-          process.env.FIEXPRESS_ORM = suggestedOrm;
-          console.log(
-            `Overriding ORM to '${suggestedOrm}' to match DB '${dbVal}'`,
-          );
-        } else {
-          console.log(`Keeping ORM='${ormVal}' as requested`);
-        }
-      } else {
-        console.warn(
-          `Warning: provided --db='${dbVal}' conflicts with --orm='${ormVal}'; overriding ORM to '${suggestedOrm}' to match DB.`,
-        );
-        process.env.FIEXPRESS_ORM = suggestedOrm;
-      }
+    if (suggestedOrm && ormVal === "none") {
+      process.env.FIEXPRESS_ORM = suggestedOrm;
+      console.log(`Auto-selected ORM '${suggestedOrm}' for DB '${dbVal}'`);
     }
 
     console.log(`📥 Cloning template from ${repoSpec} into ./${dir}...`);
