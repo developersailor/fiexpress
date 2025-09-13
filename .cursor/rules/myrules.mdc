@@ -1,0 +1,58 @@
+---
+globs: "**/*"
+alwaysApply: true
+---
+
+# FiExpress CLI Rules
+
+## Project Overview
+This is a NestJS CLI-like tool for Express.js projects. The repository contains only the essential files needed for the CLI to work via `npx` command.
+
+## Core Philosophy
+- **Minimal Repository**: Only CLI-related files are kept in this repo
+- **Template-based**: Uses `degit` to clone templates from external repositories
+- **NestJS CLI-like**: Provides similar commands and structure as NestJS CLI
+- **Zero Runtime Dependencies**: Generated projects are completely independent
+
+## File Structure
+```
+/
+├── bin/
+│   └── create-fiexpress.js    # Main CLI entry point
+├── package.json               # CLI package configuration
+├── README.md                  # Documentation
+└── LICENSE                    # License file
+```
+
+## CLI Commands Structure
+The CLI should support these main commands:
+- `npx fiexpress new <name>` - Create new project
+- `npx fiexpress generate <schematic>` - Generate components (future)
+- `npx fiexpress add <package>` - Add packages (future)
+
+## Key Features
+1. **Interactive Mode**: Guided project creation with prompts
+2. **Non-Interactive Mode**: Command-line flags for automation
+3. **Template System**: Uses external template repositories
+4. **Scaffolding**: Auto-generates boilerplate code
+5. **Sanitization**: Removes CLI artifacts from generated projects
+
+## Code Standards
+- Use ES modules (import/export)
+- Follow Node.js best practices
+- Implement proper error handling
+- Use TypeScript for CLI development (future)
+- Maintain backward compatibility
+
+## Template Requirements
+- Templates must be in separate repositories
+- Templates should include basic Express.js setup
+- Generated projects must be self-contained
+- No references to CLI generator in final output
+
+## Development Guidelines
+- Keep CLI lightweight and fast
+- Minimize dependencies
+- Use external tools (degit) for template cloning
+- Implement proper cleanup and error handling
+- Test with smoke tests for all major features

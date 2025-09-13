@@ -1,16 +1,16 @@
 {
   "name": "fiexpress",
-  "version": "1.0.6",
-  "description": "my express backend development dependencies",
+  "version": "2.0.0",
+  "description": "NestJS CLI-like tool for Express.js projects",
   "keywords": [
     "expressjs",
     "nodejs",
     "express",
-    "node"
+    "cli",
+    "generator",
+    "scaffolding",
+    "expressjs-cli"
   ],
-  "lint-staged": {
-    "**/*": "prettier --write --ignore-unknown"
-  },
   "homepage": "https://github.com/developersailor/fiexpress#readme",
   "bugs": {
     "url": "https://github.com/developersailor/fiexpress/issues"
@@ -22,9 +22,9 @@
   "license": "MIT",
   "author": "Mehmet Fiskindal",
   "type": "module",
-  "main": "index.js",
+  "main": "bin/create-fiexpress.js",
   "bin": {
-    "create-fiexpress": "bin/create-fiexpress.js"
+    "fiexpress": "bin/create-fiexpress.js"
   },
   "files": [
     "bin",
@@ -35,28 +35,25 @@
     "access": "public"
   },
   "scripts": {
-    "lint": "eslint --fix .",
-    "format": "prettier --write .",
-    "prepare": "husky",
-    "test": "jest --runInBand",
-    "smoke-test": "node scripts/smoke-test.js"
+    "prepublishOnly": "echo 'Publishing FiExpress CLI...'",
+    "lint": "eslint bin --ext .js",
+    "lint:fix": "eslint bin --ext .js --fix"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "degit": "^2.8.0",
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0",
-    "helmet": "^8.1.0",
-    "morgan": "^1.10.1"
+    "degit": "^2.8.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
-    "eslint": "^9.33.0",
-    "globals": "^16.3.0",
-    "husky": "^9.1.7",
-    "jest": "^30.0.5",
-    "lint-staged": "^16.1.5",
-    "prettier": "3.6.2",
-    "supertest": "^7.1.4"
+    "eslint": "^8.50.0",
+    "lint-staged": "^15.0.0",
+    "husky": "^8.0.0"
+  },
+  "lint-staged": {
+    "bin/**/*.js": [
+      "eslint --fix",
+      "git add"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

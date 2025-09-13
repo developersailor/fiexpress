@@ -4,6 +4,10 @@ import readline from "readline";
 import process from "process";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -198,21 +202,370 @@ async function runPostClone(targetRoot) {
     toInstall.dev["@types/cors"] = "^2.8.12";
     toInstall.dev["@types/dotenv"] = "^8.2.0";
     if (orm === "sequelize") toInstall.dev["@types/sequelize"] = "^4.28.14";
-    writeFileSafe(
-      path.join(targetRoot, "tsconfig.json"),
-      `{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    
+    // Add tsyringe dependencies if enabled
+    if (process.env.FIEXPRESS_TSYRINGE === "yes") {
+      toInstall.deps["tsyringe"] = "^4.8.0";
+      toInstall.deps["reflect-metadata"] = "^0.1.13";
+      toInstall.dev["@types/reflect-metadata"] = "^0.1.0";
+    }
+  } else {
+    // Add tsyringe dependencies for JavaScript projects too
+    if (process.env.FIEXPRESS_TSYRINGE === "yes") {
+      toInstall.deps["tsyringe"] = "^4.8.0";
+      toInstall.deps["reflect-metadata"] = "^0.1.13";
+    }
   }
-}
-`,
+
+  // Add Jest testing framework
+  if (process.env.FIEXPRESS_JEST === "yes") {
+    toInstall.dev["jest"] = "^29.7.0";
+    toInstall.dev["supertest"] = "^6.3.3";
+    
+    if (process.env.FIEXPRESS_TS === "yes") {
+      toInstall.dev["@types/jest"] = "^29.5.8";
+      toInstall.dev["@types/supertest"] = "^2.0.16";
+      toInstall.dev["ts-jest"] = "^29.1.1";
+      
+      // Jest configuration for TypeScript
+      writeFileSafe(
+        path.join(targetRoot, "jest.config.js"),
+        `module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.d.ts',
+    '!src/index.ts',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+};`
+      );
+      
+      // Test setup file
+      writeFileSafe(
+        path.join(targetRoot, "tests", "setup.ts"),
+        `// Test setup file
+import 'reflect-metadata';
+
+// Global test setup
+beforeAll(() => {
+  // Setup code here
+});
+
+afterAll(() => {
+  // Cleanup code here
+});
+`
+      );
+      
+      // Sample test file
+      writeFileSafe(
+        path.join(targetRoot, "tests", "app.test.ts"),
+        `import request from 'supertest';
+import express from 'express';
+
+describe('App', () => {
+  let app: express.Application;
+
+  beforeAll(() => {
+    // Import your app here
+    // app = require('../src/index').default;
+  });
+
+  it('should respond to GET /', async () => {
+    const response = await request(app)
+      .get('/')
+      .expect(200);
+    
+    expect(response.body).toHaveProperty('message');
+  });
+});
+`
+      );
+    } else {
+      // Jest configuration for JavaScript
+      writeFileSafe(
+        path.join(targetRoot, "jest.config.js"),
+        `module.exports = {
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
+  collectCoverageFrom: [
+    'src/**/*.js',
+    '!src/index.js',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+};`
+      );
+      
+      // Test setup file
+      writeFileSafe(
+        path.join(targetRoot, "tests", "setup.js"),
+        `// Test setup file
+
+// Global test setup
+beforeAll(() => {
+  // Setup code here
+});
+
+afterAll(() => {
+  // Cleanup code here
+});
+`
+      );
+      
+      // Sample test file
+      writeFileSafe(
+        path.join(targetRoot, "tests", "app.test.js"),
+        `const request = require('supertest');
+const express = require('express');
+
+describe('App', () => {
+  let app;
+
+  beforeAll(() => {
+    // Import your app here
+    // app = require('../src/index');
+  });
+
+  it('should respond to GET /', async () => {
+    const response = await request(app)
+      .get('/')
+      .expect(200);
+    
+    expect(response.body).toHaveProperty('message');
+  });
+});
+`
+      );
+    }
+    
+    console.log("Added Jest testing framework");
+  }
+
+  // Add ESLint and Prettier configuration
+  if (process.env.FIEXPRESS_TS === "yes") {
+    toInstall.dev["eslint"] = "^8.50.0";
+    toInstall.dev["@typescript-eslint/eslint-plugin"] = "^6.7.0";
+    toInstall.dev["@typescript-eslint/parser"] = "^6.7.0";
+    toInstall.dev["prettier"] = "^3.0.3";
+    
+    // ESLint configuration
+    writeFileSafe(
+      path.join(targetRoot, ".eslintrc.js"),
+      `module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json',
+    tsconfigRootDir: __dirname,
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint/eslint-plugin'],
+  extends: [
+    'eslint:recommended',
+    '@typescript-eslint/recommended',
+  ],
+  root: true,
+  env: {
+    node: true,
+    jest: true,
+  },
+  ignorePatterns: ['.eslintrc.js', 'dist/**/*'],
+  rules: {
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+  },
+};`
     );
-    console.log("Added tsconfig.json");
+    
+    // Prettier configuration
+    writeFileSafe(
+      path.join(targetRoot, ".prettierrc"),
+      `{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2
+}`
+    );
+    
+    console.log("Added ESLint and Prettier configuration");
+  } else {
+    toInstall.dev["eslint"] = "^8.50.0";
+    toInstall.dev["prettier"] = "^3.0.3";
+    
+    // ESLint configuration for JavaScript
+    writeFileSafe(
+      path.join(targetRoot, ".eslintrc.js"),
+      `module.exports = {
+  env: {
+    node: true,
+    es2021: true,
+    jest: true,
+  },
+  extends: ['eslint:recommended'],
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+  },
+  rules: {
+    'no-console': 'warn',
+    'no-unused-vars': 'warn',
+  },
+};`
+    );
+    
+    // Prettier configuration
+    writeFileSafe(
+      path.join(targetRoot, ".prettierrc"),
+      `{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2
+}`
+    );
+    
+    console.log("Added ESLint and Prettier configuration");
+  }
+
+  // Add .gitignore file
+  writeFileSafe(
+    path.join(targetRoot, ".gitignore"),
+    `# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+.env.production
+.env.local
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Logs
+logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+`
+  );
+  
+  console.log("Added .gitignore file");
+
+  // No external dependencies needed for weather demo - using mock data only
+
+  // Generate demo app if requested
+  if (process.env.FIEXPRESS_DEMO !== "none") {
+    await generateDemoApp(targetRoot, process.env.FIEXPRESS_DEMO, ext);
   }
 
   addDepsToPackageJson(targetRoot, toInstall.deps, toInstall.dev);
@@ -232,6 +585,26 @@ async function runPostClone(targetRoot) {
         process.env.FIEXPRESS_TS === "yes"
           ? "ts-node src/index.ts"
           : "node src/index.js";
+    
+    // Add test scripts if Jest is enabled
+    if (process.env.FIEXPRESS_JEST === "yes") {
+      pkg.scripts.test = "jest";
+      pkg.scripts["test:watch"] = "jest --watch";
+      pkg.scripts["test:coverage"] = "jest --coverage";
+    }
+    
+    // Add build scripts for TypeScript
+    if (process.env.FIEXPRESS_TS === "yes") {
+      pkg.scripts.build = "tsc";
+      pkg.scripts["build:watch"] = "tsc --watch";
+      pkg.scripts["build:clean"] = "rm -rf dist";
+      pkg.scripts["build:prod"] = "npm run build:clean && npm run build";
+    }
+    
+    // Add lint scripts
+    pkg.scripts.lint = "eslint src --ext .ts,.js";
+    pkg.scripts["lint:fix"] = "eslint src --ext .ts,.js --fix";
+    
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
     console.log("Added start/dev scripts to generated package.json");
   } catch {
@@ -242,12 +615,222 @@ async function runPostClone(targetRoot) {
     const entryExt = process.env.FIEXPRESS_TS === "yes" ? "ts" : "js";
     const entryPath = path.join(targetRoot, "src", `index.${entryExt}`);
     if (!fs.existsSync(entryPath)) {
-      const content =
-        process.env.FIEXPRESS_TS === "yes"
-          ? `import express from 'express';\nconst app = express();\napp.get('/', (req,res)=>res.send('hello from generated app'));\napp.listen(process.env.PORT||3000, ()=>console.log('listening'));\n`
-          : `const express = require('express');\nconst app = express();\napp.get('/', (req,res)=>res.send('hello from generated app'));\napp.listen(process.env.PORT||3000, ()=>console.log('listening'));\n`;
+      let content = "";
+      
+      if (process.env.FIEXPRESS_TS === "yes") {
+        if (process.env.FIEXPRESS_TSYRINGE === "yes") {
+          content = `import 'reflect-metadata';
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { container } from 'tsyringe';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to FiExpress Weather API (Mock Data)',
+    version: '1.0.0',
+    endpoints: {
+      weather: '/api/weather/city/:city',
+      weatherByCoords: '/api/weather/coordinates?lat=:lat&lon=:lon'
+    },
+    note: 'This demo uses mock weather data - no external API required'
+  });
+});
+
+// Import and use demo routes
+${process.env.FIEXPRESS_DEMO === "weather" ? `import weatherRoutes from './routes/weather';
+app.use('/api/weather', weatherRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "todo" ? `import todoRoutes from './routes/todo';
+app.use('/api/todos', todoRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "blog" ? `import blogRoutes from './routes/blog';
+app.use('/api/blog', blogRoutes);` : ''}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`📡 API available at http://localhost:\${PORT}\`);
+  ${process.env.FIEXPRESS_DEMO === "weather" ? `console.log(\`🌤️  Weather API: http://localhost:\${PORT}/api/weather/city/Istanbul\`);` : ''}
+});
+`;
+        } else {
+          content = `import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to FiExpress API',
+    version: '1.0.0'
+  });
+});
+
+// Import and use demo routes
+${process.env.FIEXPRESS_DEMO === "weather" ? `import weatherRoutes from './routes/weather';
+app.use('/api/weather', weatherRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "todo" ? `import todoRoutes from './routes/todo';
+app.use('/api/todos', todoRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "blog" ? `import blogRoutes from './routes/blog';
+app.use('/api/blog', blogRoutes);` : ''}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`📡 API available at http://localhost:\${PORT}\`);
+  ${process.env.FIEXPRESS_DEMO === "weather" ? `console.log(\`🌤️  Weather API: http://localhost:\${PORT}/api/weather/city/Istanbul\`);` : ''}
+});
+`;
+        }
+      } else {
+        if (process.env.FIEXPRESS_TSYRINGE === "yes") {
+          content = `require('reflect-metadata');
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { container } = require('tsyringe');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to FiExpress Weather API (Mock Data)',
+    version: '1.0.0',
+    endpoints: {
+      weather: '/api/weather/city/:city',
+      weatherByCoords: '/api/weather/coordinates?lat=:lat&lon=:lon'
+    },
+    note: 'This demo uses mock weather data - no external API required'
+  });
+});
+
+// Import and use demo routes
+${process.env.FIEXPRESS_DEMO === "weather" ? `const weatherRoutes = require('./routes/weather');
+app.use('/api/weather', weatherRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "todo" ? `const todoRoutes = require('./routes/todo');
+app.use('/api/todos', todoRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "blog" ? `const blogRoutes = require('./routes/blog');
+app.use('/api/blog', blogRoutes);` : ''}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`📡 API available at http://localhost:\${PORT}\`);
+  ${process.env.FIEXPRESS_DEMO === "weather" ? `console.log(\`🌤️  Weather API: http://localhost:\${PORT}/api/weather/city/Istanbul\`);` : ''}
+});
+`;
+        } else {
+          content = `const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to FiExpress API',
+    version: '1.0.0'
+  });
+});
+
+// Import and use demo routes
+${process.env.FIEXPRESS_DEMO === "weather" ? `const weatherRoutes = require('./routes/weather');
+app.use('/api/weather', weatherRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "todo" ? `const todoRoutes = require('./routes/todo');
+app.use('/api/todos', todoRoutes);` : ''}
+${process.env.FIEXPRESS_DEMO === "blog" ? `const blogRoutes = require('./routes/blog');
+app.use('/api/blog', blogRoutes);` : ''}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`📡 API available at http://localhost:\${PORT}\`);
+  ${process.env.FIEXPRESS_DEMO === "weather" ? `console.log(\`🌤️  Weather API: http://localhost:\${PORT}/api/weather/city/Istanbul\`);` : ''}
+});
+`;
+        }
+      }
+      
       writeFileSafe(entryPath, content);
-      console.log(`Added minimal app entry ${entryPath}`);
+      console.log(`Added app entry ${entryPath}`);
     }
   } catch {
     /* ignore */
@@ -262,17 +845,2305 @@ async function runPostClone(targetRoot) {
     console.log("  npx tsc --noEmit (to check types)");
 }
 
+async function generateDemoApp(targetRoot, demoType, ext) {
+  console.log(`🎯 Generating ${demoType} demo app...`);
+  
+  if (demoType === "weather") {
+    await generateWeatherDemo(targetRoot, ext);
+  } else if (demoType === "todo") {
+    await generateTodoDemo(targetRoot, ext);
+  } else if (demoType === "blog") {
+    await generateBlogDemo(targetRoot, ext);
+  }
+}
+
+async function generateWeatherDemo(targetRoot, ext) {
+  const isTs = ext === "ts";
+  const useTsyringe = process.env.FIEXPRESS_TSYRINGE === "yes";
+  
+  // Note: Dependencies will be added in the main runPostClone function
+  
+  // Weather service
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "WeatherService.ts"),
+      `import { injectable } from 'tsyringe';
+
+export interface WeatherData {
+  location: string;
+  temperature: number;
+  description: string;
+  humidity: number;
+  windSpeed: number;
+}
+
+@injectable()
+export class WeatherService {
+  private readonly weatherDescriptions = [
+    'sunny', 'cloudy', 'rainy', 'snowy', 'foggy', 'windy', 'stormy', 'clear'
+  ];
+
+  constructor() {
+    // No external API needed - using mock data only
+  }
+
+  async getWeatherByCity(city: string): Promise<WeatherData> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: city,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+
+  async getWeatherByCoordinates(lat: number, lon: number): Promise<WeatherData> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: \`\${lat.toFixed(2)},\${lon.toFixed(2)}\`,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+}
+`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "WeatherService.ts"),
+      `// Weather service with mock data only
+
+export interface WeatherData {
+  location: string;
+  temperature: number;
+  description: string;
+  humidity: number;
+  windSpeed: number;
+}
+
+export class WeatherService {
+  private readonly weatherDescriptions = [
+    'sunny', 'cloudy', 'rainy', 'snowy', 'foggy', 'windy', 'stormy', 'clear'
+  ];
+
+  constructor() {
+    // No external API needed - using mock data only
+  }
+
+  async getWeatherByCity(city: string): Promise<WeatherData> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: city,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+
+  async getWeatherByCoordinates(lat: number, lon: number): Promise<WeatherData> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: \`\${lat.toFixed(2)},\${lon.toFixed(2)}\`,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+}
+`
+    );
+  } else {
+    if (useTsyringe) {
+      writeFileSafe(
+        path.join(targetRoot, "src", "services", "WeatherService.js"),
+        `const { injectable } = require('tsyringe');
+
+@injectable()
+class WeatherService {
+  constructor() {
+    this.weatherDescriptions = [
+      'sunny', 'cloudy', 'rainy', 'snowy', 'foggy', 'windy', 'stormy', 'clear'
+    ];
+  }
+
+  async getWeatherByCity(city) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: city,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+
+  async getWeatherByCoordinates(lat, lon) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: \`\${lat.toFixed(2)},\${lon.toFixed(2)}\`,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+}
+
+module.exports = { WeatherService };
+`
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "services", "WeatherService.js"),
+        `// Weather service with mock data only
+
+class WeatherService {
+  constructor() {
+    this.weatherDescriptions = [
+      'sunny', 'cloudy', 'rainy', 'snowy', 'foggy', 'windy', 'stormy', 'clear'
+    ];
+  }
+
+  async getWeatherByCity(city) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: city,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+
+  async getWeatherByCoordinates(lat, lon) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      location: \`\${lat.toFixed(2)},\${lon.toFixed(2)}\`,
+      temperature: Math.floor(Math.random() * 30) + 10, // 10-40°C
+      description: this.weatherDescriptions[Math.floor(Math.random() * this.weatherDescriptions.length)],
+      humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
+      windSpeed: Math.floor(Math.random() * 20) + 5 // 5-25 km/h
+    };
+  }
+}
+
+module.exports = { WeatherService };
+`
+      );
+    }
+  }
+
+  // Weather controller
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "WeatherController.ts"),
+      `import { injectable, inject } from 'tsyringe';
+import { Request, Response } from 'express';
+import { WeatherService } from '../services/WeatherService';
+
+@injectable()
+export class WeatherController {
+  constructor(
+    @inject(WeatherService) private weatherService: WeatherService
+  ) {}
+
+  async getWeatherByCity(req: Request, res: Response) {
+    try {
+      const { city } = req.params;
+      const weather = await this.weatherService.getWeatherByCity(city);
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+
+  async getWeatherByCoordinates(req: Request, res: Response) {
+    try {
+      const { lat, lon } = req.query;
+      const weather = await this.weatherService.getWeatherByCoordinates(
+        Number(lat),
+        Number(lon)
+      );
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+}
+`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "WeatherController.ts"),
+      `import { Request, Response } from 'express';
+import { WeatherService } from '../services/WeatherService';
+
+export class WeatherController {
+  private weatherService: WeatherService;
+
+  constructor() {
+    this.weatherService = new WeatherService();
+  }
+
+  async getWeatherByCity(req: Request, res: Response) {
+    try {
+      const { city } = req.params;
+      const weather = await this.weatherService.getWeatherByCity(city);
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+
+  async getWeatherByCoordinates(req: Request, res: Response) {
+    try {
+      const { lat, lon } = req.query;
+      const weather = await this.weatherService.getWeatherByCoordinates(
+        Number(lat),
+        Number(lon)
+      );
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+}
+`
+    );
+  } else {
+    if (useTsyringe) {
+      writeFileSafe(
+        path.join(targetRoot, "src", "controllers", "WeatherController.js"),
+        `const { injectable, inject } = require('tsyringe');
+const { WeatherService } = require('../services/WeatherService');
+
+@injectable()
+class WeatherController {
+  constructor(@inject(WeatherService) weatherService) {
+    this.weatherService = weatherService;
+  }
+
+  async getWeatherByCity(req, res) {
+    try {
+      const { city } = req.params;
+      const weather = await this.weatherService.getWeatherByCity(city);
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+
+  async getWeatherByCoordinates(req, res) {
+    try {
+      const { lat, lon } = req.query;
+      const weather = await this.weatherService.getWeatherByCoordinates(
+        Number(lat),
+        Number(lon)
+      );
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+}
+
+module.exports = { WeatherController };
+`
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "controllers", "WeatherController.js"),
+        `const { WeatherService } = require('../services/WeatherService');
+
+class WeatherController {
+  constructor() {
+    this.weatherService = new WeatherService();
+  }
+
+  async getWeatherByCity(req, res) {
+    try {
+      const { city } = req.params;
+      const weather = await this.weatherService.getWeatherByCity(city);
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+
+  async getWeatherByCoordinates(req, res) {
+    try {
+      const { lat, lon } = req.query;
+      const weather = await this.weatherService.getWeatherByCoordinates(
+        Number(lat),
+        Number(lon)
+      );
+      res.json({
+        success: true,
+        data: weather
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch weather data'
+      });
+    }
+  }
+}
+
+module.exports = { WeatherController };
+`
+      );
+    }
+  }
+
+  // Weather routes
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "weather.ts"),
+      `import { Router } from 'express';
+import { container } from 'tsyringe';
+import { WeatherController } from '../controllers/WeatherController';
+
+const router = Router();
+const weatherController = container.resolve(WeatherController);
+
+router.get('/city/:city', (req, res) => weatherController.getWeatherByCity(req, res));
+router.get('/coordinates', (req, res) => weatherController.getWeatherByCoordinates(req, res));
+
+export default router;`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "weather.ts"),
+      `import { Router } from 'express';
+import { WeatherController } from '../controllers/WeatherController';
+
+const router = Router();
+const weatherController = new WeatherController();
+
+router.get('/city/:city', (req, res) => weatherController.getWeatherByCity(req, res));
+router.get('/coordinates', (req, res) => weatherController.getWeatherByCoordinates(req, res));
+
+export default router;`
+    );
+  } else {
+    if (useTsyringe) {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "weather.js"),
+        `const express = require('express');
+const { container } = require('tsyringe');
+const { WeatherController } = require('../controllers/WeatherController');
+
+const router = express.Router();
+const weatherController = container.resolve(WeatherController);
+
+router.get('/city/:city', (req, res) => weatherController.getWeatherByCity(req, res));
+router.get('/coordinates', (req, res) => weatherController.getWeatherByCoordinates(req, res));
+
+module.exports = router;`
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "weather.js"),
+        `const express = require('express');
+const { WeatherController } = require('../controllers/WeatherController');
+
+const router = express.Router();
+const weatherController = new WeatherController();
+
+router.get('/city/:city', (req, res) => weatherController.getWeatherByCity(req, res));
+router.get('/coordinates', (req, res) => weatherController.getWeatherByCoordinates(req, res));
+
+module.exports = router;`
+      );
+    }
+  }
+
+  console.log("✅ Weather demo app generated");
+}
+
+async function generateTodoDemo(targetRoot, ext) {
+  const isTs = ext === "ts";
+  const useTsyringe = process.env.FIEXPRESS_TSYRINGE === "yes";
+  
+  console.log("📝 Generating Todo demo app...");
+  
+  // Todo service with in-memory storage
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "TodoService.ts"),
+      `import { injectable } from 'tsyringe';
+
+export interface Todo {
+  id: string;
+  title: string;
+  description?: string;
+  completed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+@injectable()
+export class TodoService {
+  private todos: Todo[] = [];
+  private nextId = 1;
+
+  constructor() {
+    // Initialize with sample todos
+    this.todos = [
+      {
+        id: '1',
+        title: 'Learn FiExpress CLI',
+        description: 'Understand how to use FiExpress for creating Express.js projects',
+        completed: false,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Build a Todo App',
+        description: 'Create a simple todo application with CRUD operations',
+        completed: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-03')
+      }
+    ];
+  }
+
+  async getAllTodos(): Promise<Todo[]> {
+    return [...this.todos];
+  }
+
+  async getTodoById(id: string): Promise<Todo | null> {
+    return this.todos.find(todo => todo.id === id) || null;
+  }
+
+  async createTodo(title: string, description?: string): Promise<Todo> {
+    const newTodo: Todo = {
+      id: this.nextId.toString(),
+      title,
+      description,
+      completed: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextId++;
+    this.todos.push(newTodo);
+    return newTodo;
+  }
+
+  async updateTodo(id: string, updates: Partial<Omit<Todo, 'id' | 'createdAt'>>): Promise<Todo | null> {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return null;
+
+    this.todos[todoIndex] = {
+      ...this.todos[todoIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.todos[todoIndex];
+  }
+
+  async deleteTodo(id: string): Promise<boolean> {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return false;
+
+    this.todos.splice(todoIndex, 1);
+    return true;
+  }
+
+  async toggleTodo(id: string): Promise<Todo | null> {
+    const todo = await this.getTodoById(id);
+    if (!todo) return null;
+
+    return this.updateTodo(id, { completed: !todo.completed });
+  }
+}
+`
+    );
+  } else {
+    // JavaScript version
+    const serviceContent = useTsyringe ? 
+      `const { injectable } = require('tsyringe');
+
+@injectable()
+class TodoService {
+  constructor() {
+    this.todos = [];
+    this.nextId = 1;
+    
+    // Initialize with sample todos
+    this.todos = [
+      {
+        id: '1',
+        title: 'Learn FiExpress CLI',
+        description: 'Understand how to use FiExpress for creating Express.js projects',
+        completed: false,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Build a Todo App',
+        description: 'Create a simple todo application with CRUD operations',
+        completed: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-03')
+      }
+    ];
+  }
+
+  async getAllTodos() {
+    return [...this.todos];
+  }
+
+  async getTodoById(id) {
+    return this.todos.find(todo => todo.id === id) || null;
+  }
+
+  async createTodo(title, description) {
+    const newTodo = {
+      id: this.nextId.toString(),
+      title,
+      description,
+      completed: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextId++;
+    this.todos.push(newTodo);
+    return newTodo;
+  }
+
+  async updateTodo(id, updates) {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return null;
+
+    this.todos[todoIndex] = {
+      ...this.todos[todoIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.todos[todoIndex];
+  }
+
+  async deleteTodo(id) {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return false;
+
+    this.todos.splice(todoIndex, 1);
+    return true;
+  }
+
+  async toggleTodo(id) {
+    const todo = await this.getTodoById(id);
+    if (!todo) return null;
+
+    return this.updateTodo(id, { completed: !todo.completed });
+  }
+}
+
+module.exports = { TodoService };` :
+      `class TodoService {
+  constructor() {
+    this.todos = [];
+    this.nextId = 1;
+    
+    // Initialize with sample todos
+    this.todos = [
+      {
+        id: '1',
+        title: 'Learn FiExpress CLI',
+        description: 'Understand how to use FiExpress for creating Express.js projects',
+        completed: false,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Build a Todo App',
+        description: 'Create a simple todo application with CRUD operations',
+        completed: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-03')
+      }
+    ];
+  }
+
+  async getAllTodos() {
+    return [...this.todos];
+  }
+
+  async getTodoById(id) {
+    return this.todos.find(todo => todo.id === id) || null;
+  }
+
+  async createTodo(title, description) {
+    const newTodo = {
+      id: this.nextId.toString(),
+      title,
+      description,
+      completed: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextId++;
+    this.todos.push(newTodo);
+    return newTodo;
+  }
+
+  async updateTodo(id, updates) {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return null;
+
+    this.todos[todoIndex] = {
+      ...this.todos[todoIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.todos[todoIndex];
+  }
+
+  async deleteTodo(id) {
+    const todoIndex = this.todos.findIndex(todo => todo.id === id);
+    if (todoIndex === -1) return false;
+
+    this.todos.splice(todoIndex, 1);
+    return true;
+  }
+
+  async toggleTodo(id) {
+    const todo = await this.getTodoById(id);
+    if (!todo) return null;
+
+    return this.updateTodo(id, { completed: !todo.completed });
+  }
+}
+
+module.exports = { TodoService };`;
+
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "TodoService.js"),
+      serviceContent
+    );
+  }
+
+  console.log("✅ Todo demo app generated");
+}
+
+async function generateBlogDemo(targetRoot, ext) {
+  const isTs = ext === "ts";
+  const useTsyringe = process.env.FIEXPRESS_TSYRINGE === "yes";
+  
+  console.log("📝 Generating Blog demo app...");
+  
+  // Blog service with in-memory storage
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "BlogService.ts"),
+      `import { injectable } from 'tsyringe';
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  author: string;
+  content: string;
+  createdAt: Date;
+}
+
+@injectable()
+export class BlogService {
+  private posts: Post[] = [];
+  private comments: Comment[] = [];
+  private nextPostId = 1;
+  private nextCommentId = 1;
+
+  constructor() {
+    // Initialize with sample posts
+    this.posts = [
+      {
+        id: '1',
+        title: 'Welcome to FiExpress Blog',
+        content: 'This is a sample blog post created with FiExpress CLI. Learn how to build amazing Express.js applications with modern tools and best practices.',
+        author: 'FiExpress Team',
+        published: true,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Getting Started with TypeScript',
+        content: 'TypeScript brings static typing to JavaScript, making your code more robust and maintainable. Learn the basics and start using it in your Express.js projects.',
+        author: 'Developer',
+        published: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-02')
+      }
+    ];
+
+    // Initialize with sample comments
+    this.comments = [
+      {
+        id: '1',
+        postId: '1',
+        author: 'John Doe',
+        content: 'Great post! Very helpful for beginners.',
+        createdAt: new Date('2024-01-01T10:00:00')
+      },
+      {
+        id: '2',
+        postId: '1',
+        author: 'Jane Smith',
+        content: 'Thanks for sharing this tutorial.',
+        createdAt: new Date('2024-01-01T14:30:00')
+      }
+    ];
+  }
+
+  // Post methods
+  async getAllPosts(): Promise<Post[]> {
+    return [...this.posts];
+  }
+
+  async getPostById(id: string): Promise<Post | null> {
+    return this.posts.find(post => post.id === id) || null;
+  }
+
+  async createPost(title: string, content: string, author: string): Promise<Post> {
+    const newPost: Post = {
+      id: this.nextPostId.toString(),
+      title,
+      content,
+      author,
+      published: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextPostId++;
+    this.posts.push(newPost);
+    return newPost;
+  }
+
+  async updatePost(id: string, updates: Partial<Omit<Post, 'id' | 'createdAt'>>): Promise<Post | null> {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return null;
+
+    this.posts[postIndex] = {
+      ...this.posts[postIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.posts[postIndex];
+  }
+
+  async deletePost(id: string): Promise<boolean> {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return false;
+
+    this.posts.splice(postIndex, 1);
+    // Also delete related comments
+    this.comments = this.comments.filter(comment => comment.postId !== id);
+    return true;
+  }
+
+  async publishPost(id: string): Promise<Post | null> {
+    return this.updatePost(id, { published: true });
+  }
+
+  // Comment methods
+  async getCommentsByPostId(postId: string): Promise<Comment[]> {
+    return this.comments.filter(comment => comment.postId === postId);
+  }
+
+  async createComment(postId: string, author: string, content: string): Promise<Comment> {
+    const newComment: Comment = {
+      id: this.nextCommentId.toString(),
+      postId,
+      author,
+      content,
+      createdAt: new Date()
+    };
+    
+    this.nextCommentId++;
+    this.comments.push(newComment);
+    return newComment;
+  }
+
+  async deleteComment(id: string): Promise<boolean> {
+    const commentIndex = this.comments.findIndex(comment => comment.id === id);
+    if (commentIndex === -1) return false;
+
+    this.comments.splice(commentIndex, 1);
+    return true;
+  }
+}
+`
+    );
+  } else {
+    // JavaScript version
+    const serviceContent = useTsyringe ? 
+      `const { injectable } = require('tsyringe');
+
+@injectable()
+class BlogService {
+  constructor() {
+    this.posts = [];
+    this.comments = [];
+    this.nextPostId = 1;
+    this.nextCommentId = 1;
+    
+    // Initialize with sample posts
+    this.posts = [
+      {
+        id: '1',
+        title: 'Welcome to FiExpress Blog',
+        content: 'This is a sample blog post created with FiExpress CLI. Learn how to build amazing Express.js applications with modern tools and best practices.',
+        author: 'FiExpress Team',
+        published: true,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Getting Started with TypeScript',
+        content: 'TypeScript brings static typing to JavaScript, making your code more robust and maintainable. Learn the basics and start using it in your Express.js projects.',
+        author: 'Developer',
+        published: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-02')
+      }
+    ];
+
+    // Initialize with sample comments
+    this.comments = [
+      {
+        id: '1',
+        postId: '1',
+        author: 'John Doe',
+        content: 'Great post! Very helpful for beginners.',
+        createdAt: new Date('2024-01-01T10:00:00')
+      },
+      {
+        id: '2',
+        postId: '1',
+        author: 'Jane Smith',
+        content: 'Thanks for sharing this tutorial.',
+        createdAt: new Date('2024-01-01T14:30:00')
+      }
+    ];
+  }
+
+  // Post methods
+  async getAllPosts() {
+    return [...this.posts];
+  }
+
+  async getPostById(id) {
+    return this.posts.find(post => post.id === id) || null;
+  }
+
+  async createPost(title, content, author) {
+    const newPost = {
+      id: this.nextPostId.toString(),
+      title,
+      content,
+      author,
+      published: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextPostId++;
+    this.posts.push(newPost);
+    return newPost;
+  }
+
+  async updatePost(id, updates) {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return null;
+
+    this.posts[postIndex] = {
+      ...this.posts[postIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.posts[postIndex];
+  }
+
+  async deletePost(id) {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return false;
+
+    this.posts.splice(postIndex, 1);
+    // Also delete related comments
+    this.comments = this.comments.filter(comment => comment.postId !== id);
+    return true;
+  }
+
+  async publishPost(id) {
+    return this.updatePost(id, { published: true });
+  }
+
+  // Comment methods
+  async getCommentsByPostId(postId) {
+    return this.comments.filter(comment => comment.postId === postId);
+  }
+
+  async createComment(postId, author, content) {
+    const newComment = {
+      id: this.nextCommentId.toString(),
+      postId,
+      author,
+      content,
+      createdAt: new Date()
+    };
+    
+    this.nextCommentId++;
+    this.comments.push(newComment);
+    return newComment;
+  }
+
+  async deleteComment(id) {
+    const commentIndex = this.comments.findIndex(comment => comment.id === id);
+    if (commentIndex === -1) return false;
+
+    this.comments.splice(commentIndex, 1);
+    return true;
+  }
+}
+
+module.exports = { BlogService };` :
+      `class BlogService {
+  constructor() {
+    this.posts = [];
+    this.comments = [];
+    this.nextPostId = 1;
+    this.nextCommentId = 1;
+    
+    // Initialize with sample posts
+    this.posts = [
+      {
+        id: '1',
+        title: 'Welcome to FiExpress Blog',
+        content: 'This is a sample blog post created with FiExpress CLI. Learn how to build amazing Express.js applications with modern tools and best practices.',
+        author: 'FiExpress Team',
+        published: true,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01')
+      },
+      {
+        id: '2',
+        title: 'Getting Started with TypeScript',
+        content: 'TypeScript brings static typing to JavaScript, making your code more robust and maintainable. Learn the basics and start using it in your Express.js projects.',
+        author: 'Developer',
+        published: true,
+        createdAt: new Date('2024-01-02'),
+        updatedAt: new Date('2024-01-02')
+      }
+    ];
+
+    // Initialize with sample comments
+    this.comments = [
+      {
+        id: '1',
+        postId: '1',
+        author: 'John Doe',
+        content: 'Great post! Very helpful for beginners.',
+        createdAt: new Date('2024-01-01T10:00:00')
+      },
+      {
+        id: '2',
+        postId: '1',
+        author: 'Jane Smith',
+        content: 'Thanks for sharing this tutorial.',
+        createdAt: new Date('2024-01-01T14:30:00')
+      }
+    ];
+  }
+
+  // Post methods
+  async getAllPosts() {
+    return [...this.posts];
+  }
+
+  async getPostById(id) {
+    return this.posts.find(post => post.id === id) || null;
+  }
+
+  async createPost(title, content, author) {
+    const newPost = {
+      id: this.nextPostId.toString(),
+      title,
+      content,
+      author,
+      published: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.nextPostId++;
+    this.posts.push(newPost);
+    return newPost;
+  }
+
+  async updatePost(id, updates) {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return null;
+
+    this.posts[postIndex] = {
+      ...this.posts[postIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    return this.posts[postIndex];
+  }
+
+  async deletePost(id) {
+    const postIndex = this.posts.findIndex(post => post.id === id);
+    if (postIndex === -1) return false;
+
+    this.posts.splice(postIndex, 1);
+    // Also delete related comments
+    this.comments = this.comments.filter(comment => comment.postId !== id);
+    return true;
+  }
+
+  async publishPost(id) {
+    return this.updatePost(id, { published: true });
+  }
+
+  // Comment methods
+  async getCommentsByPostId(postId) {
+    return this.comments.filter(comment => comment.postId === postId);
+  }
+
+  async createComment(postId, author, content) {
+    const newComment = {
+      id: this.nextCommentId.toString(),
+      postId,
+      author,
+      content,
+      createdAt: new Date()
+    };
+    
+    this.nextCommentId++;
+    this.comments.push(newComment);
+    return newComment;
+  }
+
+  async deleteComment(id) {
+    const commentIndex = this.comments.findIndex(comment => comment.id === id);
+    if (commentIndex === -1) return false;
+
+    this.comments.splice(commentIndex, 1);
+    return true;
+  }
+}
+
+module.exports = { BlogService };`;
+
+    writeFileSafe(
+      path.join(targetRoot, "src", "services", "BlogService.js"),
+      serviceContent
+    );
+  }
+
+  console.log("✅ Blog demo app generated");
+}
+
+async function generateComponent(schematic, name) {
+  const currentDir = process.cwd();
+  
+  // Check if we're in a FiExpress project
+  const packageJsonPath = path.join(currentDir, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    console.error("❌ Not in a FiExpress project directory. Please run this command from your project root.");
+    process.exit(1);
+  }
+  
+  // Detect project type (TS/JS)
+  const isTs = fs.existsSync(path.join(currentDir, 'tsconfig.json'));
+  const ext = isTs ? 'ts' : 'js';
+  
+  // Check for tsyringe
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  const useTsyringe = packageJson.dependencies && packageJson.dependencies.tsyringe;
+  
+  console.log(`🔧 Generating ${schematic}: ${name}`);
+  
+  switch (schematic.toLowerCase()) {
+    case 'controller':
+      await generateController(name, ext, useTsyringe, currentDir);
+      break;
+    case 'service':
+      await generateService(name, ext, useTsyringe, currentDir);
+      break;
+    case 'middleware':
+      await generateMiddleware(name, ext, currentDir);
+      break;
+    case 'route':
+      await generateRoute(name, ext, useTsyringe, currentDir);
+      break;
+    case 'model':
+      await generateModel(name, ext, currentDir);
+      break;
+    case 'interface':
+      if (!isTs) {
+        console.error("❌ Interfaces are only available for TypeScript projects.");
+        process.exit(1);
+      }
+      await generateInterface(name, currentDir);
+      break;
+    case 'test':
+      await generateTest(name, ext, currentDir);
+      break;
+    case 'resource':
+      await generateResource(name, ext, useTsyringe, currentDir);
+      break;
+    default:
+      console.error(`❌ Unknown schematic: ${schematic}`);
+      console.log("Available schematics: controller, service, middleware, route, model, interface, test, resource");
+      process.exit(1);
+  }
+}
+
+async function generateController(name, ext, useTsyringe, targetDir) {
+  const className = name.endsWith('Controller') ? name : `${name}Controller`;
+  const fileName = className.replace(/([A-Z])/g, (match, p1, offset) => 
+    offset > 0 ? `-${p1.toLowerCase()}` : p1.toLowerCase()
+  );
+  
+  if (useTsyringe && ext === 'ts') {
+    const content = `import { injectable, inject } from 'tsyringe';
+import { Request, Response } from 'express';
+
+@injectable()
+export class ${className} {
+  constructor() {
+    // Add injected dependencies here
+  }
+
+  async index(req: Request, res: Response) {
+    try {
+      res.json({
+        success: true,
+        message: '${className} index method',
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async show(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} show method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async create(req: Request, res: Response) {
+    try {
+      const data = req.body;
+      res.status(201).json({
+        success: true,
+        message: '${className} create method',
+        data
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      res.json({
+        success: true,
+        message: '${className} update method',
+        data: { id, ...data }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} delete method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'controllers', `${fileName}.${ext}`), content);
+  } else if (ext === 'ts') {
+    const content = `import { Request, Response } from 'express';
+
+export class ${className} {
+  async index(req: Request, res: Response) {
+    try {
+      res.json({
+        success: true,
+        message: '${className} index method',
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async show(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} show method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async create(req: Request, res: Response) {
+    try {
+      const data = req.body;
+      res.status(201).json({
+        success: true,
+        message: '${className} create method',
+        data
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      res.json({
+        success: true,
+        message: '${className} update method',
+        data: { id, ...data }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} delete method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'controllers', `${fileName}.${ext}`), content);
+  } else {
+    const content = useTsyringe ? 
+      `const { injectable, inject } = require('tsyringe');
+
+@injectable()
+class ${className} {
+  constructor() {
+    // Add injected dependencies here
+  }
+
+  async index(req, res) {
+    try {
+      res.json({
+        success: true,
+        message: '${className} index method',
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async show(req, res) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} show method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async create(req, res) {
+    try {
+      const data = req.body;
+      res.status(201).json({
+        success: true,
+        message: '${className} create method',
+        data
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      res.json({
+        success: true,
+        message: '${className} update method',
+        data: { id, ...data }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} delete method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+
+module.exports = { ${className} };` :
+      `class ${className} {
+  async index(req, res) {
+    try {
+      res.json({
+        success: true,
+        message: '${className} index method',
+        data: []
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async show(req, res) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} show method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async create(req, res) {
+    try {
+      const data = req.body;
+      res.status(201).json({
+        success: true,
+        message: '${className} create method',
+        data
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      res.json({
+        success: true,
+        message: '${className} update method',
+        data: { id, ...data }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        message: '${className} delete method',
+        data: { id }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+
+module.exports = { ${className} };`;
+    writeFileSafe(path.join(targetDir, 'src', 'controllers', `${fileName}.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated controller: src/controllers/${fileName}.${ext}`);
+}
+
+async function generateService(name, ext, useTsyringe, targetDir) {
+  const className = name.endsWith('Service') ? name : `${name}Service`;
+  const fileName = className.replace(/([A-Z])/g, (match, p1, offset) => 
+    offset > 0 ? `-${p1.toLowerCase()}` : p1.toLowerCase()
+  );
+  
+  if (useTsyringe && ext === 'ts') {
+    const content = `import { injectable } from 'tsyringe';
+
+@injectable()
+export class ${className} {
+  constructor() {
+    // Initialize service
+  }
+
+  async findAll(): Promise<any[]> {
+    // Implement findAll logic
+    return [];
+  }
+
+  async findOne(id: string): Promise<any | null> {
+    // Implement findOne logic
+    return null;
+  }
+
+  async create(data: any): Promise<any> {
+    // Implement create logic
+    return data;
+  }
+
+  async update(id: string, data: any): Promise<any | null> {
+    // Implement update logic
+    return { id, ...data };
+  }
+
+  async remove(id: string): Promise<boolean> {
+    // Implement remove logic
+    return true;
+  }
+}
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'services', `${fileName}.${ext}`), content);
+  } else if (ext === 'ts') {
+    const content = `export class ${className} {
+  constructor() {
+    // Initialize service
+  }
+
+  async findAll(): Promise<any[]> {
+    // Implement findAll logic
+    return [];
+  }
+
+  async findOne(id: string): Promise<any | null> {
+    // Implement findOne logic
+    return null;
+  }
+
+  async create(data: any): Promise<any> {
+    // Implement create logic
+    return data;
+  }
+
+  async update(id: string, data: any): Promise<any | null> {
+    // Implement update logic
+    return { id, ...data };
+  }
+
+  async remove(id: string): Promise<boolean> {
+    // Implement remove logic
+    return true;
+  }
+}
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'services', `${fileName}.${ext}`), content);
+  } else {
+    const content = useTsyringe ? 
+      `const { injectable } = require('tsyringe');
+
+@injectable()
+class ${className} {
+  constructor() {
+    // Initialize service
+  }
+
+  async findAll() {
+    // Implement findAll logic
+    return [];
+  }
+
+  async findOne(id) {
+    // Implement findOne logic
+    return null;
+  }
+
+  async create(data) {
+    // Implement create logic
+    return data;
+  }
+
+  async update(id, data) {
+    // Implement update logic
+    return { id, ...data };
+  }
+
+  async remove(id) {
+    // Implement remove logic
+    return true;
+  }
+}
+
+module.exports = { ${className} };` :
+      `class ${className} {
+  constructor() {
+    // Initialize service
+  }
+
+  async findAll() {
+    // Implement findAll logic
+    return [];
+  }
+
+  async findOne(id) {
+    // Implement findOne logic
+    return null;
+  }
+
+  async create(data) {
+    // Implement create logic
+    return data;
+  }
+
+  async update(id, data) {
+    // Implement update logic
+    return { id, ...data };
+  }
+
+  async remove(id) {
+    // Implement remove logic
+    return true;
+  }
+}
+
+module.exports = { ${className} };`;
+    writeFileSafe(path.join(targetDir, 'src', 'services', `${fileName}.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated service: src/services/${fileName}.${ext}`);
+}
+
+async function generateMiddleware(name, ext, targetDir) {
+  const className = name.endsWith('Middleware') ? name : `${name}Middleware`;
+  const fileName = className.replace(/([A-Z])/g, (match, p1, offset) => 
+    offset > 0 ? `-${p1.toLowerCase()}` : p1.toLowerCase()
+  );
+  
+  if (ext === 'ts') {
+    const content = `import { Request, Response, NextFunction } from 'express';
+
+export class ${className} {
+  static handle(req: Request, res: Response, next: NextFunction) {
+    // Add middleware logic here
+    console.log('${className} executed');
+    next();
+  }
+}
+
+export default ${className}.handle;
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'middleware', `${fileName}.${ext}`), content);
+  } else {
+    const content = `const ${className} = (req, res, next) => {
+  // Add middleware logic here
+  console.log('${className} executed');
+  next();
+};
+
+module.exports = ${className};
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'middleware', `${fileName}.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated middleware: src/middleware/${fileName}.${ext}`);
+}
+
+async function generateRoute(name, ext, useTsyringe, targetDir) {
+  const routeName = name.toLowerCase();
+  const fileName = routeName;
+  
+  if (useTsyringe && ext === 'ts') {
+    const content = `import { Router } from 'express';
+import { container } from 'tsyringe';
+
+const router = Router();
+
+// Add your routes here
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '${routeName} routes',
+    data: []
+  });
+});
+
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} by id',
+    data: { id }
+  });
+});
+
+router.post('/', (req, res) => {
+  const data = req.body;
+  res.status(201).json({
+    success: true,
+    message: '${routeName} created',
+    data
+  });
+});
+
+router.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  res.json({
+    success: true,
+    message: '${routeName} updated',
+    data: { id, ...data }
+  });
+});
+
+router.delete('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} deleted',
+    data: { id }
+  });
+});
+
+export default router;
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'routes', `${fileName}.${ext}`), content);
+  } else if (ext === 'ts') {
+    const content = `import { Router } from 'express';
+
+const router = Router();
+
+// Add your routes here
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '${routeName} routes',
+    data: []
+  });
+});
+
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} by id',
+    data: { id }
+  });
+});
+
+router.post('/', (req, res) => {
+  const data = req.body;
+  res.status(201).json({
+    success: true,
+    message: '${routeName} created',
+    data
+  });
+});
+
+router.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  res.json({
+    success: true,
+    message: '${routeName} updated',
+    data: { id, ...data }
+  });
+});
+
+router.delete('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} deleted',
+    data: { id }
+  });
+});
+
+export default router;
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'routes', `${fileName}.${ext}`), content);
+  } else {
+    const content = `const express = require('express');
+const router = express.Router();
+
+// Add your routes here
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '${routeName} routes',
+    data: []
+  });
+});
+
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} by id',
+    data: { id }
+  });
+});
+
+router.post('/', (req, res) => {
+  const data = req.body;
+  res.status(201).json({
+    success: true,
+    message: '${routeName} created',
+    data
+  });
+});
+
+router.put('/:id', (req, res) => {
+  const { id } = req.params;
+  const data = req.body;
+  res.json({
+    success: true,
+    message: '${routeName} updated',
+    data: { id, ...data }
+  });
+});
+
+router.delete('/:id', (req, res) => {
+  const { id } = req.params;
+  res.json({
+    success: true,
+    message: '${routeName} deleted',
+    data: { id }
+  });
+});
+
+module.exports = router;
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'routes', `${fileName}.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated route: src/routes/${fileName}.${ext}`);
+}
+
+async function generateModel(name, ext, targetDir) {
+  const className = name;
+  const fileName = className.toLowerCase();
+  
+  if (ext === 'ts') {
+    const content = `export interface ${className} {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Add your properties here
+}
+
+export class ${className}Model {
+  private data: ${className}[] = [];
+
+  async findAll(): Promise<${className}[]> {
+    return [...this.data];
+  }
+
+  async findById(id: string): Promise<${className} | null> {
+    return this.data.find(item => item.id === id) || null;
+  }
+
+  async create(data: Omit<${className}, 'id' | 'createdAt' | 'updatedAt'>): Promise<${className}> {
+    const newItem: ${className} = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.data.push(newItem);
+    return newItem;
+  }
+
+  async update(id: string, data: Partial<${className}>): Promise<${className} | null> {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return null;
+
+    this.data[index] = {
+      ...this.data[index],
+      ...data,
+      updatedAt: new Date()
+    };
+
+    return this.data[index];
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return false;
+
+    this.data.splice(index, 1);
+    return true;
+  }
+}
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'models', `${fileName}.${ext}`), content);
+  } else {
+    const content = `class ${className}Model {
+  constructor() {
+    this.data = [];
+  }
+
+  async findAll() {
+    return [...this.data];
+  }
+
+  async findById(id) {
+    return this.data.find(item => item.id === id) || null;
+  }
+
+  async create(data) {
+    const newItem = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.data.push(newItem);
+    return newItem;
+  }
+
+  async update(id, data) {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return null;
+
+    this.data[index] = {
+      ...this.data[index],
+      ...data,
+      updatedAt: new Date()
+    };
+
+    return this.data[index];
+  }
+
+  async delete(id) {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return false;
+
+    this.data.splice(index, 1);
+    return true;
+  }
+}
+
+module.exports = { ${className}Model };
+`;
+    writeFileSafe(path.join(targetDir, 'src', 'models', `${fileName}.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated model: src/models/${fileName}.${ext}`);
+}
+
+async function generateInterface(name, targetDir) {
+  const interfaceName = name.endsWith('Interface') ? name : `${name}Interface`;
+  const fileName = interfaceName.toLowerCase();
+  
+  const content = `export interface ${interfaceName} {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Add your properties here
+}
+
+export interface Create${name}Dto {
+  // Add create properties here
+}
+
+export interface Update${name}Dto {
+  // Add update properties here (all optional)
+}
+`;
+  writeFileSafe(path.join(targetDir, 'src', 'interfaces', `${fileName}.ts`), content);
+  
+  console.log(`✅ Generated interface: src/interfaces/${fileName}.ts`);
+}
+
+async function generateTest(name, ext, targetDir) {
+  const testName = name;
+  const fileName = testName.toLowerCase();
+  
+  if (ext === 'ts') {
+    const content = `import request from 'supertest';
+import express from 'express';
+
+describe('${testName}', () => {
+  let app: express.Application;
+
+  beforeAll(() => {
+    // Setup your app here
+    app = express();
+    app.use(express.json());
+    
+    // Add your routes here
+    app.get('/test', (req, res) => {
+      res.json({ message: 'test' });
+    });
+  });
+
+  describe('GET /test', () => {
+    it('should return test message', async () => {
+      const response = await request(app)
+        .get('/test')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('message', 'test');
+    });
+  });
+
+  // Add more tests here
+});
+`;
+    writeFileSafe(path.join(targetDir, 'tests', `${fileName}.test.${ext}`), content);
+  } else {
+    const content = `const request = require('supertest');
+const express = require('express');
+
+describe('${testName}', () => {
+  let app;
+
+  beforeAll(() => {
+    // Setup your app here
+    app = express();
+    app.use(express.json());
+    
+    // Add your routes here
+    app.get('/test', (req, res) => {
+      res.json({ message: 'test' });
+    });
+  });
+
+  describe('GET /test', () => {
+    it('should return test message', async () => {
+      const response = await request(app)
+        .get('/test')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('message', 'test');
+    });
+  });
+
+  // Add more tests here
+});
+`;
+    writeFileSafe(path.join(targetDir, 'tests', `${fileName}.test.${ext}`), content);
+  }
+  
+  console.log(`✅ Generated test: tests/${fileName}.test.${ext}`);
+}
+
+async function generateResource(name, ext, useTsyringe, targetDir) {
+  console.log(`🔧 Generating complete CRUD resource: ${name}`);
+  
+  // Generate controller
+  await generateController(name, ext, useTsyringe, targetDir);
+  
+  // Generate service
+  await generateService(name, ext, useTsyringe, targetDir);
+  
+  // Generate routes
+  await generateRoute(name, ext, useTsyringe, targetDir);
+  
+  // Generate model
+  await generateModel(name, ext, targetDir);
+  
+  // Generate interface if TypeScript
+  if (ext === 'ts') {
+    await generateInterface(name, targetDir);
+  }
+  
+  // Generate test
+  await generateTest(name, ext, targetDir);
+  
+  console.log(`✅ Generated complete CRUD resource: ${name}`);
+  console.log(`📁 Files created:`);
+  console.log(`   - src/controllers/${name.toLowerCase()}-controller.${ext}`);
+  console.log(`   - src/services/${name.toLowerCase()}-service.${ext}`);
+  console.log(`   - src/routes/${name.toLowerCase()}.${ext}`);
+  console.log(`   - src/models/${name.toLowerCase()}.${ext}`);
+  if (ext === 'ts') {
+    console.log(`   - src/interfaces/${name.toLowerCase()}-interface.ts`);
+  }
+  console.log(`   - tests/${name.toLowerCase()}.test.${ext}`);
+}
+
+function showHelp() {
+  console.log(`
+FiExpress CLI - NestJS CLI-like tool for Express.js projects
+
+Usage:
+  npx fiexpress new <name> [options]     Create a new Express.js project
+  npx fiexpress generate <schematic>     Generate components, services, etc.
+  npx fiexpress --help                   Show this help message
+  npx fiexpress --version                Show version information
+
+Options for 'new' command:
+  --db <database>        Database type (postgres|mysql|mongo) [default: postgres]
+  --orm <orm>            ORM to use (prisma|sequelize|drizzle|mongoose|none) [default: auto]
+  --ts                   Enable TypeScript support
+  --tsyringe             Enable tsyringe dependency injection
+  --jest                 Include Jest testing framework
+  --demo <type>          Create demo app (weather|todo|blog) [default: none]
+  --dotenv               Add .env.example file
+  --jwt                  Include JWT authentication helpers
+  --casl                 Include CASL authorization stubs
+  --user                 Add example user routes and model
+  --roles                Add role-based middleware helpers
+
+Available schematics for 'generate' command:
+  controller <name>      Generate a controller
+  service <name>         Generate a service
+  middleware <name>      Generate a middleware
+  route <name>           Generate a route
+  model <name>           Generate a model
+  interface <name>       Generate an interface (TS only)
+  test <name>            Generate a test file
+  resource <name>        Generate a CRUD resource (controller + service + routes)
+
+Examples:
+  npx fiexpress new my-api
+  npx fiexpress new my-api --ts --db postgres --orm prisma --jest
+  npx fiexpress new my-api --jwt --casl --user --roles
+  npx fiexpress new weather-api --ts --tsyringe --demo weather
+  npx fiexpress new todo-api --ts --tsyringe --demo todo --jwt
+  npx fiexpress generate controller UserController
+  npx fiexpress generate service UserService
+  npx fiexpress generate resource Product
+
+For more information, visit: https://github.com/developersailor/fiexpress
+`);
+}
+
+function showVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    console.log(pkg.version);
+  } catch {
+    console.log('1.0.0');
+  }
+}
+
 async function main() {
   try {
-    console.log("fiexpress project creator (degit)");
-
     const argv = process.argv.slice(2);
+    
+    // Handle help and version flags
+    if (argv.includes('--help') || argv.includes('-h')) {
+      showHelp();
+      return;
+    }
+    
+    if (argv.includes('--version') || argv.includes('-v')) {
+      showVersion();
+      return;
+    }
+
+    // Parse command
+    const command = argv[0];
+    
+    if (!command || command === 'new') {
+      // Default to 'new' command
+      console.log("🚀 FiExpress CLI - Creating new Express.js project");
+      
     const flags = {};
-    for (let i = 0; i < argv.length; i++) {
-      const a = argv[i];
+      const args = command === 'new' ? argv.slice(1) : argv;
+      
+      for (let i = 0; i < args.length; i++) {
+        const a = args[i];
       if (a.startsWith("--")) {
         const key = a.replace(/^--+/, "");
-        const next = argv[i + 1];
+          const next = args[i + 1];
         if (next && !next.startsWith("--")) {
           flags[key] = next;
           i++;
@@ -282,6 +3153,35 @@ async function main() {
       }
     }
 
+      await createNewProject(flags);
+    } else if (command === 'generate' || command === 'g') {
+      const schematic = argv[1];
+      const name = argv[2];
+      
+      if (!schematic || !name) {
+        console.error("❌ Usage: npx fiexpress generate <schematic> <name>");
+        console.log("Available schematics: controller, service, middleware, route, model, interface, test, resource");
+        process.exit(1);
+      }
+      
+      await generateComponent(schematic, name);
+    } else if (command === 'add') {
+      console.log("➕ Add command - Coming soon!");
+      console.log("This feature will allow you to add packages and integrations to existing projects.");
+      console.log("For now, please manually add packages to your project.");
+    } else {
+      console.error(`❌ Unknown command: ${command}`);
+      console.log("Run 'npx fiexpress --help' to see available commands.");
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error("❌ Error:", err.message);
+    process.exit(1);
+  }
+}
+
+async function createNewProject(flags) {
+  try {
     let name = flags.name;
     let db = flags.db;
     let orm = flags.orm;
@@ -291,6 +3191,9 @@ async function main() {
     let user = flags.user;
     let roles = flags.roles;
     let ts = flags.ts;
+    let tsyringe = flags.tsyringe;
+    let jest = flags.jest;
+    let demo = flags.demo;
 
     if (
       !name ||
@@ -344,6 +3247,18 @@ async function main() {
         (await question("Include role-based auth helpers? (yes/no) [no]: ")) ||
         "no";
       ts = ts || (await question("Enable TypeScript? (yes/no) [no]: ")) || "no";
+      tsyringe =
+        tsyringe ||
+        (await question("Enable tsyringe dependency injection? (yes/no) [no]: ")) ||
+        "no";
+      jest =
+        jest ||
+        (await question("Include Jest testing framework? (yes/no) [no]: ")) ||
+        "no";
+      demo =
+        demo ||
+        (await question("Create demo app? (weather/todo/blog/none) [none]: ")) ||
+        "none";
     }
 
     rl.close();
@@ -359,6 +3274,9 @@ async function main() {
     process.env.FIEXPRESS_USER = (user || "no").toLowerCase();
     process.env.FIEXPRESS_ROLES = (roles || "no").toLowerCase();
     process.env.FIEXPRESS_TS = (ts || "no").toLowerCase();
+    process.env.FIEXPRESS_TSYRINGE = (tsyringe || "no").toLowerCase();
+    process.env.FIEXPRESS_JEST = (jest || "no").toLowerCase();
+    process.env.FIEXPRESS_DEMO = (demo || "none").toLowerCase();
 
     const dbVal = process.env.FIEXPRESS_DB;
     const ormVal = process.env.FIEXPRESS_ORM;
@@ -398,7 +3316,7 @@ async function main() {
       }
     }
 
-    console.log(`Cloning ${repoSpec} into ./${dir} using degit...`);
+    console.log(`📥 Cloning template from ${repoSpec} into ./${dir}...`);
 
     const isLocalTest = !!process.env.FIEXPRESS_LOCAL_TEMPLATE;
 
@@ -408,8 +3326,9 @@ async function main() {
       try {
         copyLocalTemplateToDst(src, dst);
         await runPostClone(dst);
+        console.log("✅ Project created successfully!");
       } catch (err) {
-        console.error("Failed to copy local template:", err);
+        console.error("❌ Failed to copy local template:", err);
         process.exit(1);
       }
     } else {
@@ -419,14 +3338,15 @@ async function main() {
       child.on("close", (code) => {
         if (code === 0) {
           runPostClone(path.resolve(process.cwd(), dir));
+          console.log("✅ Project created successfully!");
         } else {
-          console.error("degit failed with code", code);
+          console.error("❌ Template cloning failed with code", code);
           process.exit(1);
         }
       });
     }
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error creating project:", err);
     process.exit(1);
   }
 }
