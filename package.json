@@ -49,8 +49,7 @@
   },
   "lint-staged": {
     "bin/**/*.js": [
-      "eslint --fix",
-      "git add"
+      "eslint --fix"
     ]
   },
   "engines": {
