@@ -162,27 +162,99 @@ async function runPostClone(targetRoot) {
   if (process.env.FIEXPRESS_JWT === "yes") {
     toInstall.deps["jsonwebtoken"] = "^9.0.0";
     toInstall.deps["bcryptjs"] = "^2.4.3";
-    writeFileSafe(
-      path.join(targetRoot, "src", "auth", `jwt.${ext}`),
-      `// JWT auth helper\nimport jwt from 'jsonwebtoken';\nconst secret = process.env.JWT_SECRET || 'change-me';\nexport function sign(payload){ return jwt.sign(payload, secret); }\nexport function verify(token){ return jwt.verify(token, secret); }\n`,
-    );
+    
+    if (process.env.FIEXPRESS_TS === "yes") {
+      toInstall.dev["@types/jsonwebtoken"] = "^9.0.0";
+      toInstall.dev["@types/bcryptjs"] = "^2.4.0";
+      
+      writeFileSafe(
+        path.join(targetRoot, "src", "auth", `jwt.${ext}`),
+        `// JWT auth helper
+import jwt from 'jsonwebtoken';
+
+const secret = process.env.JWT_SECRET || 'change-me';
+
+export function sign(payload: any): string {
+  return jwt.sign(payload, secret);
+}
+
+export function verify(token: string): any {
+  return jwt.verify(token, secret);
+}
+`,
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "auth", `jwt.${ext}`),
+        `// JWT auth helper
+import jwt from 'jsonwebtoken';
+
+const secret = process.env.JWT_SECRET || 'change-me';
+
+export function sign(payload) {
+  return jwt.sign(payload, secret);
+}
+
+export function verify(token) {
+  return jwt.verify(token, secret);
+}
+`,
+      );
+    }
     console.log("Added JWT auth helper");
   }
 
   if (process.env.FIEXPRESS_CASL === "yes") {
     toInstall.deps["@casl/ability"] = "^6.4.0";
-    writeFileSafe(
-      path.join(targetRoot, "src", "auth", `casl.${ext}`),
-      `// CASL ability stub\nimport { Ability } from '@casl/ability';\nexport const defineAbility = (user) => new Ability([]);\n`,
-    );
+    
+    if (process.env.FIEXPRESS_TS === "yes") {
+      writeFileSafe(
+        path.join(targetRoot, "src", "auth", `casl.${ext}`),
+        `// CASL ability stub
+import { Ability } from '@casl/ability';
+
+export const defineAbility = (user: any) => new Ability([]);
+`,
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "auth", `casl.${ext}`),
+        `// CASL ability stub
+import { Ability } from '@casl/ability';
+
+export const defineAbility = (user) => new Ability([]);
+`,
+      );
+    }
     console.log("Added CASL stub");
   }
 
   if (process.env.FIEXPRESS_ROLES === "yes") {
-    writeFileSafe(
-      path.join(targetRoot, "src", "middleware", `roles.${ext}`),
-      `export function requireRole(role){\n  return (req,res,next)=>{\n    if(req.user && req.user.role===role) return next();\n    res.status(403).end();\n  }\n}\n`,
-    );
+    if (process.env.FIEXPRESS_TS === "yes") {
+      writeFileSafe(
+        path.join(targetRoot, "src", "middleware", `roles.${ext}`),
+        `import { Request, Response, NextFunction } from 'express';
+
+export function requireRole(role: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.user && (req.user as any).role === role) return next();
+    res.status(403).end();
+  };
+}
+`,
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "middleware", `roles.${ext}`),
+        `export function requireRole(role) {
+  return (req, res, next) => {
+    if (req.user && req.user.role === role) return next();
+    res.status(403).end();
+  };
+}
+`,
+      );
+    }
     console.log("Added role-based middleware stub");
   }
 
@@ -278,6 +350,11 @@ describe('App', () => {
   beforeAll(() => {
     // Import your app here
     // app = require('../src/index').default;
+    app = express();
+    app.use(express.json());
+    app.get('/', (req, res) => {
+      res.json({ message: 'test' });
+    });
   });
 
   it('should respond to GET /', async () => {
@@ -336,6 +413,11 @@ describe('App', () => {
   beforeAll(() => {
     // Import your app here
     // app = require('../src/index');
+    app = express();
+    app.use(express.json());
+    app.get('/', (req, res) => {
+      res.json({ message: 'test' });
+    });
   });
 
   it('should respond to GET /', async () => {
@@ -657,13 +739,13 @@ ${process.env.FIEXPRESS_DEMO === "blog" ? `import blogRoutes from './routes/blog
 app.use('/api/blog', blogRoutes);` : ''}
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (req: any, res: any) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
@@ -705,13 +787,13 @@ ${process.env.FIEXPRESS_DEMO === "blog" ? `import blogRoutes from './routes/blog
 app.use('/api/blog', blogRoutes);` : ''}
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (req: any, res: any) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
@@ -762,13 +844,13 @@ ${process.env.FIEXPRESS_DEMO === "blog" ? `const blogRoutes = require('./routes/
 app.use('/api/blog', blogRoutes);` : ''}
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (req: any, res: any) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
@@ -810,13 +892,13 @@ ${process.env.FIEXPRESS_DEMO === "blog" ? `const blogRoutes = require('./routes/
 app.use('/api/blog', blogRoutes);` : ''}
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (req: any, res: any) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
@@ -1597,6 +1679,650 @@ module.exports = { TodoService };`;
     );
   }
 
+  // Todo controller
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "TodoController.ts"),
+      `import { injectable, inject } from 'tsyringe';
+import { Request, Response } from 'express';
+import { TodoService } from '../services/TodoService';
+
+@injectable()
+export class TodoController {
+  constructor(
+    @inject(TodoService) private todoService: TodoService
+  ) {}
+
+  async getAllTodos(req: Request, res: Response) {
+    try {
+      const todos = await this.todoService.getAllTodos();
+      res.json({
+        success: true,
+        data: todos
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todos'
+      });
+    }
+  }
+
+  async getTodoById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.getTodoById(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todo'
+      });
+    }
+  }
+
+  async createTodo(req: Request, res: Response) {
+    try {
+      const { title, description } = req.body;
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title is required'
+        });
+      }
+      const todo = await this.todoService.createTodo(title, description);
+      res.status(201).json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create todo'
+      });
+    }
+  }
+
+  async updateTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const todo = await this.todoService.updateTodo(id, updates);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update todo'
+      });
+    }
+  }
+
+  async deleteTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.todoService.deleteTodo(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete todo'
+      });
+    }
+  }
+
+  async toggleTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.toggleTodo(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to toggle todo'
+      });
+    }
+  }
+}
+`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "TodoController.ts"),
+      `import { Request, Response } from 'express';
+import { TodoService } from '../services/TodoService';
+
+export class TodoController {
+  private todoService: TodoService;
+
+  constructor() {
+    this.todoService = new TodoService();
+  }
+
+  async getAllTodos(req: Request, res: Response) {
+    try {
+      const todos = await this.todoService.getAllTodos();
+      res.json({
+        success: true,
+        data: todos
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todos'
+      });
+    }
+  }
+
+  async getTodoById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.getTodoById(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todo'
+      });
+    }
+  }
+
+  async createTodo(req: Request, res: Response) {
+    try {
+      const { title, description } = req.body;
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title is required'
+        });
+      }
+      const todo = await this.todoService.createTodo(title, description);
+      res.status(201).json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create todo'
+      });
+    }
+  }
+
+  async updateTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const todo = await this.todoService.updateTodo(id, updates);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update todo'
+      });
+    }
+  }
+
+  async deleteTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.todoService.deleteTodo(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete todo'
+      });
+    }
+  }
+
+  async toggleTodo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.toggleTodo(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to toggle todo'
+      });
+    }
+  }
+}
+`
+    );
+  } else {
+    // JavaScript version
+    const controllerContent = useTsyringe ? 
+      `const { injectable, inject } = require('tsyringe');
+const { TodoService } = require('../services/TodoService');
+
+@injectable()
+class TodoController {
+  constructor(@inject(TodoService) todoService) {
+    this.todoService = todoService;
+  }
+
+  async getAllTodos(req, res) {
+    try {
+      const todos = await this.todoService.getAllTodos();
+      res.json({
+        success: true,
+        data: todos
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todos'
+      });
+    }
+  }
+
+  async getTodoById(req, res) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.getTodoById(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todo'
+      });
+    }
+  }
+
+  async createTodo(req, res) {
+    try {
+      const { title, description } = req.body;
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title is required'
+        });
+      }
+      const todo = await this.todoService.createTodo(title, description);
+      res.status(201).json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create todo'
+      });
+    }
+  }
+
+  async updateTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const todo = await this.todoService.updateTodo(id, updates);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update todo'
+      });
+    }
+  }
+
+  async deleteTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.todoService.deleteTodo(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete todo'
+      });
+    }
+  }
+
+  async toggleTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.toggleTodo(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to toggle todo'
+      });
+    }
+  }
+}
+
+module.exports = { TodoController };` :
+      `const { TodoService } = require('../services/TodoService');
+
+class TodoController {
+  constructor() {
+    this.todoService = new TodoService();
+  }
+
+  async getAllTodos(req, res) {
+    try {
+      const todos = await this.todoService.getAllTodos();
+      res.json({
+        success: true,
+        data: todos
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todos'
+      });
+    }
+  }
+
+  async getTodoById(req, res) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.getTodoById(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch todo'
+      });
+    }
+  }
+
+  async createTodo(req, res) {
+    try {
+      const { title, description } = req.body;
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title is required'
+        });
+      }
+      const todo = await this.todoService.createTodo(title, description);
+      res.status(201).json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create todo'
+      });
+    }
+  }
+
+  async updateTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const todo = await this.todoService.updateTodo(id, updates);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update todo'
+      });
+    }
+  }
+
+  async deleteTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.todoService.deleteTodo(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete todo'
+      });
+    }
+  }
+
+  async toggleTodo(req, res) {
+    try {
+      const { id } = req.params;
+      const todo = await this.todoService.toggleTodo(id);
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: todo
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to toggle todo'
+      });
+    }
+  }
+}
+
+module.exports = { TodoController };`;
+
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "TodoController.js"),
+      controllerContent
+    );
+  }
+
+  // Todo routes
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "todo.ts"),
+      `import { Router } from 'express';
+import { container } from 'tsyringe';
+import { TodoController } from '../controllers/TodoController';
+
+const router = Router();
+const todoController = container.resolve(TodoController);
+
+router.get('/', (req, res) => todoController.getAllTodos(req, res));
+router.get('/:id', (req, res) => todoController.getTodoById(req, res));
+router.post('/', (req, res) => todoController.createTodo(req, res));
+router.put('/:id', (req, res) => todoController.updateTodo(req, res));
+router.delete('/:id', (req, res) => todoController.deleteTodo(req, res));
+router.patch('/:id/toggle', (req, res) => todoController.toggleTodo(req, res));
+
+export default router;`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "todo.ts"),
+      `import { Router } from 'express';
+import { TodoController } from '../controllers/TodoController';
+
+const router = Router();
+const todoController = new TodoController();
+
+router.get('/', (req, res) => todoController.getAllTodos(req, res));
+router.get('/:id', (req, res) => todoController.getTodoById(req, res));
+router.post('/', (req, res) => todoController.createTodo(req, res));
+router.put('/:id', (req, res) => todoController.updateTodo(req, res));
+router.delete('/:id', (req, res) => todoController.deleteTodo(req, res));
+router.patch('/:id/toggle', (req, res) => todoController.toggleTodo(req, res));
+
+export default router;`
+    );
+  } else {
+    if (useTsyringe) {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "todo.js"),
+        `const express = require('express');
+const { container } = require('tsyringe');
+const { TodoController } = require('../controllers/TodoController');
+
+const router = express.Router();
+const todoController = container.resolve(TodoController);
+
+router.get('/', (req, res) => todoController.getAllTodos(req, res));
+router.get('/:id', (req, res) => todoController.getTodoById(req, res));
+router.post('/', (req, res) => todoController.createTodo(req, res));
+router.put('/:id', (req, res) => todoController.updateTodo(req, res));
+router.delete('/:id', (req, res) => todoController.deleteTodo(req, res));
+router.patch('/:id/toggle', (req, res) => todoController.toggleTodo(req, res));
+
+module.exports = router;`
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "todo.js"),
+        `const express = require('express');
+const { TodoController } = require('../controllers/TodoController');
+
+const router = express.Router();
+const todoController = new TodoController();
+
+router.get('/', (req, res) => todoController.getAllTodos(req, res));
+router.get('/:id', (req, res) => todoController.getTodoById(req, res));
+router.post('/', (req, res) => todoController.createTodo(req, res));
+router.put('/:id', (req, res) => todoController.updateTodo(req, res));
+router.delete('/:id', (req, res) => todoController.deleteTodo(req, res));
+router.patch('/:id/toggle', (req, res) => todoController.toggleTodo(req, res));
+
+module.exports = router;`
+      );
+    }
+  }
+
   console.log("✅ Todo demo app generated");
 }
 
@@ -2029,6 +2755,918 @@ module.exports = { BlogService };`;
       path.join(targetRoot, "src", "services", "BlogService.js"),
       serviceContent
     );
+  }
+
+  // Blog controller
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "BlogController.ts"),
+      `import { injectable, inject } from 'tsyringe';
+import { Request, Response } from 'express';
+import { BlogService } from '../services/BlogService';
+
+@injectable()
+export class BlogController {
+  constructor(
+    @inject(BlogService) private blogService: BlogService
+  ) {}
+
+  async getAllPosts(req: Request, res: Response) {
+    try {
+      const posts = await this.blogService.getAllPosts();
+      res.json({
+        success: true,
+        data: posts
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts'
+      });
+    }
+  }
+
+  async getPostById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.getPostById(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch post'
+      });
+    }
+  }
+
+  async createPost(req: Request, res: Response) {
+    try {
+      const { title, content, author } = req.body;
+      if (!title || !content || !author) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title, content, and author are required'
+        });
+      }
+      const post = await this.blogService.createPost(title, content, author);
+      res.status(201).json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create post'
+      });
+    }
+  }
+
+  async updatePost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const post = await this.blogService.updatePost(id, updates);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update post'
+      });
+    }
+  }
+
+  async deletePost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deletePost(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Post deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete post'
+      });
+    }
+  }
+
+  async publishPost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.publishPost(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish post'
+      });
+    }
+  }
+
+  async getCommentsByPostId(req: Request, res: Response) {
+    try {
+      const { postId } = req.params;
+      const comments = await this.blogService.getCommentsByPostId(postId);
+      res.json({
+        success: true,
+        data: comments
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch comments'
+      });
+    }
+  }
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { postId } = req.params;
+      const { author, content } = req.body;
+      if (!author || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Author and content are required'
+        });
+      }
+      const comment = await this.blogService.createComment(postId, author, content);
+      res.status(201).json({
+        success: true,
+        data: comment
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create comment'
+      });
+    }
+  }
+
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deleteComment(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Comment deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete comment'
+      });
+    }
+  }
+}
+`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "BlogController.ts"),
+      `import { Request, Response } from 'express';
+import { BlogService } from '../services/BlogService';
+
+export class BlogController {
+  private blogService: BlogService;
+
+  constructor() {
+    this.blogService = new BlogService();
+  }
+
+  async getAllPosts(req: Request, res: Response) {
+    try {
+      const posts = await this.blogService.getAllPosts();
+      res.json({
+        success: true,
+        data: posts
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts'
+      });
+    }
+  }
+
+  async getPostById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.getPostById(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch post'
+      });
+    }
+  }
+
+  async createPost(req: Request, res: Response) {
+    try {
+      const { title, content, author } = req.body;
+      if (!title || !content || !author) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title, content, and author are required'
+        });
+      }
+      const post = await this.blogService.createPost(title, content, author);
+      res.status(201).json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create post'
+      });
+    }
+  }
+
+  async updatePost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const post = await this.blogService.updatePost(id, updates);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update post'
+      });
+    }
+  }
+
+  async deletePost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deletePost(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Post deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete post'
+      });
+    }
+  }
+
+  async publishPost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.publishPost(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish post'
+      });
+    }
+  }
+
+  async getCommentsByPostId(req: Request, res: Response) {
+    try {
+      const { postId } = req.params;
+      const comments = await this.blogService.getCommentsByPostId(postId);
+      res.json({
+        success: true,
+        data: comments
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch comments'
+      });
+    }
+  }
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { postId } = req.params;
+      const { author, content } = req.body;
+      if (!author || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Author and content are required'
+        });
+      }
+      const comment = await this.blogService.createComment(postId, author, content);
+      res.status(201).json({
+        success: true,
+        data: comment
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create comment'
+      });
+    }
+  }
+
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deleteComment(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Comment deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete comment'
+      });
+    }
+  }
+}
+`
+    );
+  } else {
+    // JavaScript version - BlogController
+    const blogControllerContent = useTsyringe ? 
+      `const { injectable, inject } = require('tsyringe');
+const { BlogService } = require('../services/BlogService');
+
+@injectable()
+class BlogController {
+  constructor(@inject(BlogService) blogService) {
+    this.blogService = blogService;
+  }
+
+  async getAllPosts(req, res) {
+    try {
+      const posts = await this.blogService.getAllPosts();
+      res.json({
+        success: true,
+        data: posts
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts'
+      });
+    }
+  }
+
+  async getPostById(req, res) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.getPostById(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch post'
+      });
+    }
+  }
+
+  async createPost(req, res) {
+    try {
+      const { title, content, author } = req.body;
+      if (!title || !content || !author) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title, content, and author are required'
+        });
+      }
+      const post = await this.blogService.createPost(title, content, author);
+      res.status(201).json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create post'
+      });
+    }
+  }
+
+  async updatePost(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const post = await this.blogService.updatePost(id, updates);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update post'
+      });
+    }
+  }
+
+  async deletePost(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deletePost(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Post deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete post'
+      });
+    }
+  }
+
+  async publishPost(req, res) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.publishPost(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish post'
+      });
+    }
+  }
+
+  async getCommentsByPostId(req, res) {
+    try {
+      const { postId } = req.params;
+      const comments = await this.blogService.getCommentsByPostId(postId);
+      res.json({
+        success: true,
+        data: comments
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch comments'
+      });
+    }
+  }
+
+  async createComment(req, res) {
+    try {
+      const { postId } = req.params;
+      const { author, content } = req.body;
+      if (!author || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Author and content are required'
+        });
+      }
+      const comment = await this.blogService.createComment(postId, author, content);
+      res.status(201).json({
+        success: true,
+        data: comment
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create comment'
+      });
+    }
+  }
+
+  async deleteComment(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deleteComment(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Comment deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete comment'
+      });
+    }
+  }
+}
+
+module.exports = { BlogController };` :
+      `const { BlogService } = require('../services/BlogService');
+
+class BlogController {
+  constructor() {
+    this.blogService = new BlogService();
+  }
+
+  async getAllPosts(req, res) {
+    try {
+      const posts = await this.blogService.getAllPosts();
+      res.json({
+        success: true,
+        data: posts
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts'
+      });
+    }
+  }
+
+  async getPostById(req, res) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.getPostById(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch post'
+      });
+    }
+  }
+
+  async createPost(req, res) {
+    try {
+      const { title, content, author } = req.body;
+      if (!title || !content || !author) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title, content, and author are required'
+        });
+      }
+      const post = await this.blogService.createPost(title, content, author);
+      res.status(201).json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create post'
+      });
+    }
+  }
+
+  async updatePost(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const post = await this.blogService.updatePost(id, updates);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update post'
+      });
+    }
+  }
+
+  async deletePost(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deletePost(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Post deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete post'
+      });
+    }
+  }
+
+  async publishPost(req, res) {
+    try {
+      const { id } = req.params;
+      const post = await this.blogService.publishPost(id);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+      res.json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish post'
+      });
+    }
+  }
+
+  async getCommentsByPostId(req, res) {
+    try {
+      const { postId } = req.params;
+      const comments = await this.blogService.getCommentsByPostId(postId);
+      res.json({
+        success: true,
+        data: comments
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch comments'
+      });
+    }
+  }
+
+  async createComment(req, res) {
+    try {
+      const { postId } = req.params;
+      const { author, content } = req.body;
+      if (!author || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Author and content are required'
+        });
+      }
+      const comment = await this.blogService.createComment(postId, author, content);
+      res.status(201).json({
+        success: true,
+        data: comment
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create comment'
+      });
+    }
+  }
+
+  async deleteComment(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await this.blogService.deleteComment(id);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found'
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Comment deleted successfully'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete comment'
+      });
+    }
+  }
+}
+
+module.exports = { BlogController };`;
+
+    writeFileSafe(
+      path.join(targetRoot, "src", "controllers", "BlogController.js"),
+      blogControllerContent
+    );
+  }
+
+  // Blog routes
+  if (useTsyringe && isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "blog.ts"),
+      `import { Router } from 'express';
+import { container } from 'tsyringe';
+import { BlogController } from '../controllers/BlogController';
+
+const router = Router();
+const blogController = container.resolve(BlogController);
+
+// Post routes
+router.get('/posts', (req, res) => blogController.getAllPosts(req, res));
+router.get('/posts/:id', (req, res) => blogController.getPostById(req, res));
+router.post('/posts', (req, res) => blogController.createPost(req, res));
+router.put('/posts/:id', (req, res) => blogController.updatePost(req, res));
+router.delete('/posts/:id', (req, res) => blogController.deletePost(req, res));
+router.patch('/posts/:id/publish', (req, res) => blogController.publishPost(req, res));
+
+// Comment routes
+router.get('/posts/:postId/comments', (req, res) => blogController.getCommentsByPostId(req, res));
+router.post('/posts/:postId/comments', (req, res) => blogController.createComment(req, res));
+router.delete('/comments/:id', (req, res) => blogController.deleteComment(req, res));
+
+export default router;`
+    );
+  } else if (isTs) {
+    writeFileSafe(
+      path.join(targetRoot, "src", "routes", "blog.ts"),
+      `import { Router } from 'express';
+import { BlogController } from '../controllers/BlogController';
+
+const router = Router();
+const blogController = new BlogController();
+
+// Post routes
+router.get('/posts', (req, res) => blogController.getAllPosts(req, res));
+router.get('/posts/:id', (req, res) => blogController.getPostById(req, res));
+router.post('/posts', (req, res) => blogController.createPost(req, res));
+router.put('/posts/:id', (req, res) => blogController.updatePost(req, res));
+router.delete('/posts/:id', (req, res) => blogController.deletePost(req, res));
+router.patch('/posts/:id/publish', (req, res) => blogController.publishPost(req, res));
+
+// Comment routes
+router.get('/posts/:postId/comments', (req, res) => blogController.getCommentsByPostId(req, res));
+router.post('/posts/:postId/comments', (req, res) => blogController.createComment(req, res));
+router.delete('/comments/:id', (req, res) => blogController.deleteComment(req, res));
+
+export default router;`
+    );
+  } else {
+    if (useTsyringe) {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "blog.js"),
+        `const express = require('express');
+const { container } = require('tsyringe');
+const { BlogController } = require('../controllers/BlogController');
+
+const router = express.Router();
+const blogController = container.resolve(BlogController);
+
+// Post routes
+router.get('/posts', (req, res) => blogController.getAllPosts(req, res));
+router.get('/posts/:id', (req, res) => blogController.getPostById(req, res));
+router.post('/posts', (req, res) => blogController.createPost(req, res));
+router.put('/posts/:id', (req, res) => blogController.updatePost(req, res));
+router.delete('/posts/:id', (req, res) => blogController.deletePost(req, res));
+router.patch('/posts/:id/publish', (req, res) => blogController.publishPost(req, res));
+
+// Comment routes
+router.get('/posts/:postId/comments', (req, res) => blogController.getCommentsByPostId(req, res));
+router.post('/posts/:postId/comments', (req, res) => blogController.createComment(req, res));
+router.delete('/comments/:id', (req, res) => blogController.deleteComment(req, res));
+
+module.exports = router;`
+      );
+    } else {
+      writeFileSafe(
+        path.join(targetRoot, "src", "routes", "blog.js"),
+        `const express = require('express');
+const { BlogController } = require('../controllers/BlogController');
+
+const router = express.Router();
+const blogController = new BlogController();
+
+// Post routes
+router.get('/posts', (req, res) => blogController.getAllPosts(req, res));
+router.get('/posts/:id', (req, res) => blogController.getPostById(req, res));
+router.post('/posts', (req, res) => blogController.createPost(req, res));
+router.put('/posts/:id', (req, res) => blogController.updatePost(req, res));
+router.delete('/posts/:id', (req, res) => blogController.deletePost(req, res));
+router.patch('/posts/:id/publish', (req, res) => blogController.publishPost(req, res));
+
+// Comment routes
+router.get('/posts/:postId/comments', (req, res) => blogController.getCommentsByPostId(req, res));
+router.post('/posts/:postId/comments', (req, res) => blogController.createComment(req, res));
+router.delete('/comments/:id', (req, res) => blogController.deleteComment(req, res));
+
+module.exports = router;`
+      );
+    }
   }
 
   console.log("✅ Blog demo app generated");
