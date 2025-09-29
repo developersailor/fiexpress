@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced CLI Options**: New command-line options for all advanced features
 - **Improved Test Scripts**: Better testing utilities with npm scripts for development
 - **Nx Monorepo Support**: Complete Nx workspace integration with Express.js, React, Angular, and Next.js support
+- **Removed Demo Applications**: Weather, Todo, and Blog demo apps are no longer generated - users create from scratch
 
 ### Enhanced
 - **CLI Interface**: More intuitive command structure with better help documentation
@@ -91,7 +92,7 @@ npx fiexpress new <name> [options]
 - `--user` - Add example user routes and model
 - `--roles` - Add role-based middleware helpers
 - `--tsyringe` - Enable tsyringe dependency injection
-- `--demo <type>` - Create demo app (weather|todo|blog)
+- `--demo` option removed - no longer generating demo applications
 - `--dotenv` - Add .env.example file
 - `--docker` - Add Docker support
 - `--swagger` - Add Swagger/OpenAPI documentation
@@ -151,13 +152,12 @@ npx fiexpress new fullstack-api \
   --user \
   --roles \
   --tsyringe \
-  --demo todo \
   --dotenv
 ```
 
 ### Quick JavaScript Project
 ```bash
-npx fiexpress new quick-api --db mongo --orm mongoose --jwt --demo weather
+npx fiexpress new quick-api --db mongo --orm mongoose --jwt
 ```
 
 ### Advanced Full-Stack Project with All Features

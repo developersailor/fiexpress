@@ -23,7 +23,7 @@ function parseArgs() {
     roles: false,
     user: false,
     jest: false,
-    demo: "none",
+    // demo: "none", // Removed - no longer generating demo applications
     dotenv: true,
     docker: false,
     swagger: false,
@@ -80,9 +80,7 @@ function parseArgs() {
       case "--jest":
         options.jest = true;
         break;
-      case "--demo":
-        options.demo = args[++i] || "weather";
-        break;
+      // Demo option removed - no longer generating demo applications
       case "--no-dotenv":
         options.dotenv = false;
         break;
@@ -251,7 +249,7 @@ function parseArgs() {
 }
 
 async function createProject(options) {
-  const { name, ts, db, orm, jwt, casl, roles, user, jest, demo, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
+  const { name, ts, db, orm, jwt, casl, roles, user, jest, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
   
   // Set environment variables for scaffolding
   process.env.FIEXPRESS_TS = ts ? "yes" : "no";
@@ -262,7 +260,7 @@ async function createProject(options) {
   process.env.FIEXPRESS_ROLES = roles ? "yes" : "no";
   process.env.FIEXPRESS_USER = user ? "yes" : "no";
   process.env.FIEXPRESS_JEST = jest ? "yes" : "no";
-  process.env.FIEXPRESS_DEMO = demo;
+  // process.env.FIEXPRESS_DEMO = demo; // Removed - no longer generating demo applications
   process.env.FIEXPRESS_DOTENV = dotenv ? "yes" : "no";
   process.env.FIEXPRESS_DOCKER = docker ? "yes" : "no";
   process.env.FIEXPRESS_SWAGGER = swagger ? "yes" : "no";
@@ -389,7 +387,7 @@ Options for 'new' command:
   --roles                Include role-based middleware
   --user                 Include example user routes
   --jest                 Include Jest testing
-  --demo <type>          Create demo app (weather|todo|blog)
+  // --demo option removed - no longer generating demo applications
   --no-dotenv            Skip .env.example file
   --docker               Add Docker support
   --swagger              Add Swagger/OpenAPI documentation
@@ -447,7 +445,7 @@ Options for 'new' command:
   --roles                Include role-based middleware
   --user                 Include example user routes
   --jest                 Include Jest testing
-  --demo <type>          Create demo app (weather|todo|blog)
+  // --demo option removed - no longer generating demo applications
   --no-dotenv            Skip .env.example file
   --docker               Add Docker support
   --swagger              Add Swagger/OpenAPI documentation

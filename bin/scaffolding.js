@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { writeFileSafe, createNewPackageJson } from "./utils.js";
-import { generateWeatherDemo, generateTodoDemo, generateBlogDemo } from "./demos.js";
+// Demo imports removed - no longer generating demo applications
 import { generateDockerSupport } from "./templates/docker.js";
 import { generateSwaggerSupport } from "./templates/swagger.js";
 import { generateHealthCheckSupport } from "./templates/health.js";
@@ -94,10 +94,8 @@ export async function runPostClone(targetRoot) {
 
   await setupPackageScripts(targetRoot, ext);
 
-  // Generate demo app if requested
-  if (process.env.FIEXPRESS_DEMO !== "none") {
-    await generateDemoApp(targetRoot, ext);
-  }
+  // Demo applications are no longer generated
+  // Users can create their own applications from scratch
 
   // Generate additional features
   await generateAdditionalFeatures(targetRoot, options);
@@ -541,17 +539,7 @@ async function setupPackageScripts(targetRoot, ext) {
   }
 }
 
-async function generateDemoApp(targetRoot, ext) {
-  const demoType = process.env.FIEXPRESS_DEMO;
-  
-  if (demoType === "weather") {
-    await generateWeatherDemo(targetRoot, ext);
-  } else if (demoType === "todo") {
-    await generateTodoDemo(targetRoot, ext);
-  } else if (demoType === "blog") {
-    await generateBlogDemo(targetRoot, ext);
-  }
-}
+// Removed unused function
 
 // Demo app generators are implemented in demos.js
 

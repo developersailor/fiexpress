@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateNxWorkspaceSupport(targetRoot, options = {}) {
   const { 
@@ -20,9 +21,9 @@ export function generateNxWorkspaceSupport(targetRoot, options = {}) {
   const packageJson = generateNxPackageJson(ts, apps, libs);
   writeFileSafe(path.join(targetRoot, "package.json"), packageJson);
   
-  // Workspace configuration
-  const workspaceConfig = generateWorkspaceConfig(ts);
-  writeFileSafe(path.join(targetRoot, "workspace.json"), workspaceConfig);
+  // Workspace configuration (deprecated, using project.json files instead)
+  // const workspaceConfig = generateWorkspaceConfig(ts);
+  // writeFileSafe(path.join(targetRoot, "workspace.json"), workspaceConfig);
   
   // Generate applications
   apps.forEach(app => {
@@ -34,9 +35,21 @@ export function generateNxWorkspaceSupport(targetRoot, options = {}) {
     generateNxLib(targetRoot, lib, ts);
   });
   
+  // Generate ORM support
+  generateOrmSupport(targetRoot, ts);
+  
+  // Generate microservices support if enabled
+  if (process.env.FIEXPRESS_MICROSERVICES === "yes") {
+    generateMicroservicesSupport(targetRoot, ts);
+  }
+  
   // Nx scripts
   const nxScripts = generateNxScripts(ts);
   writeFileSafe(path.join(targetRoot, "scripts", "nx-scripts.js"), nxScripts);
+  
+  // TypeScript base configuration
+  const tsconfigBase = generateTsconfigBase(ts);
+  writeFileSafe(path.join(targetRoot, "tsconfig.base.json"), tsconfigBase);
   
   // Docker configuration for Nx
   const dockerConfig = generateNxDockerConfig(ts);
@@ -112,6 +125,24 @@ function generateNxPackageJson(ts, apps, libs) {
     dependencies["@types/node"] = "^20.0.0";
   }
   
+  // Add ORM dependencies based on environment variables
+  const db = process.env.FIEXPRESS_DB || "postgres";
+  const orm = process.env.FIEXPRESS_ORM || "auto";
+  
+  if (db === "postgres" && (orm === "auto" || orm === "prisma")) {
+    dependencies["@prisma/client"] = "^5.0.0";
+    dependencies["prisma"] = "^5.0.0";
+  } else if (db === "postgres" && orm === "sequelize") {
+    dependencies["sequelize"] = "^6.0.0";
+    dependencies["pg"] = "^8.0.0";
+    dependencies["pg-hstore"] = "^2.3.0";
+  } else if (db === "mysql" && (orm === "auto" || orm === "sequelize")) {
+    dependencies["sequelize"] = "^6.0.0";
+    dependencies["mysql2"] = "^3.0.0";
+  } else if (db === "mongo" && (orm === "auto" || orm === "mongoose")) {
+    dependencies["mongoose"] = "^8.0.0";
+  }
+  
   return JSON.stringify({
     "name": "fiexpress-nx-workspace",
     "version": "1.0.0",
@@ -133,12 +164,15 @@ function generateNxPackageJson(ts, apps, libs) {
       "graph": "nx graph",
       "reset": "nx reset"
     },
-    "dependencies": {
-      "express": "^4.18.0",
-      "cors": "^2.8.5",
-      "helmet": "^7.0.0",
-      "dotenv": "^16.0.0"
-    },
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "dotenv": "^16.0.0",
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "@types/node": "^20.0.0"
+  },
     "devDependencies": dependencies,
     "engines": {
       "node": ">=18.0.0"
@@ -231,149 +265,165 @@ function generateWorkspaceConfig(ts) {
 function generateNxApp(targetRoot, appName, ts, express, react, angular, next) {
   const appDir = path.join(targetRoot, "apps", appName);
   
-  // App package.json
-  const appPackageJson = generateAppPackageJson(appName, ts);
-  writeFileSafe(path.join(appDir, "package.json"), appPackageJson);
+  // Create basic package.json
+  const appPackageJson = {
+    "name": `@fiexpress/${appName}`,
+    "version": "1.0.0",
+    "main": ts ? "main.ts" : "main.js",
+    "scripts": {
+      "build": "nx build",
+      "serve": "nx serve",
+      "test": "nx test"
+    }
+  };
+  writeFileSafe(path.join(appDir, "package.json"), JSON.stringify(appPackageJson, null, 2));
   
-  // App configuration
-  const appConfig = generateAppConfig(appName, ts, express, react, angular, next);
-  writeFileSafe(path.join(appDir, "project.json"), appConfig);
+  // Create basic project.json
+  const appConfig = {
+    "name": appName,
+    "root": `apps/${appName}`,
+    "sourceRoot": `apps/${appName}/src`,
+    "projectType": "application",
+    "targets": {
+      "build": {
+        "executor": "@nx/webpack:webpack",
+        "outputs": ["{options.outputPath}"],
+        "options": {
+          "target": "node",
+          "compiler": "tsc",
+          "outputPath": `dist/apps/${appName}`,
+          "main": `apps/${appName}/src/main.${ts ? 'ts' : 'js'}`,
+          "tsConfig": `apps/${appName}/tsconfig.app.json`
+        }
+      },
+      "serve": {
+        "executor": "@nx/js:node",
+        "options": {
+          "buildTarget": `${appName}:build`
+        }
+      }
+    }
+  };
+  writeFileSafe(path.join(appDir, "project.json"), JSON.stringify(appConfig, null, 2));
   
-  // TypeScript config
-  if (ts) {
-    const tsConfig = generateAppTsConfig(appName);
-    writeFileSafe(path.join(appDir, "tsconfig.json"), tsConfig);
-    writeFileSafe(path.join(appDir, "tsconfig.app.json"), tsConfig);
-  }
+  // Create src directory
+  fs.mkdirSync(path.join(appDir, "src"), { recursive: true });
   
-  // Jest config
-  const jestConfig = generateAppJestConfig(appName, ts);
-  writeFileSafe(path.join(appDir, "jest.config.js"), jestConfig);
-  
-  // ESLint config
-  const eslintConfig = generateAppEslintConfig(appName);
-  writeFileSafe(path.join(appDir, ".eslintrc.json"), eslintConfig);
-  
-  // Source files
-  if (express) {
-    generateExpressApp(targetRoot, appName, ts);
-  } else if (react) {
-    generateReactApp(targetRoot, appName, ts);
-  } else if (angular) {
-    generateAngularApp(targetRoot, appName, ts);
-  } else if (next) {
-    generateNextApp(targetRoot, appName, ts);
-  }
-}
+  // Create basic main file with imports
+  const mainContent = ts ? 
+    `import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
 
-function generateExpressApp(targetRoot, appName, ts) {
-  const appDir = path.join(targetRoot, "apps", appName, "src");
-  
-  // Main application file
-  const mainFile = ts ? generateExpressMainTs() : generateExpressMainJs();
-  writeFileSafe(path.join(appDir, ts ? "main.ts" : "main.js"), mainFile);
-  
-  // App module
-  const appModule = ts ? generateExpressAppModuleTs() : generateExpressAppModuleJs();
-  writeFileSafe(path.join(appDir, "app.module.ts"), appModule);
-  
-  // Routes
-  const routes = ts ? generateExpressRoutesTs() : generateExpressRoutesJs();
-  writeFileSafe(path.join(appDir, "routes", "index.ts"), routes);
-  
-  // Controllers
-  const controller = ts ? generateExpressControllerTs() : generateExpressControllerJs();
-  writeFileSafe(path.join(appDir, "controllers", "app.controller.ts"), controller);
-  
-  // Services
-  const service = ts ? generateExpressServiceTs() : generateExpressServiceJs();
-  writeFileSafe(path.join(appDir, "services", "app.service.ts"), service);
-}
-
-function generateExpressMainTs() {
-  return `import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
-}
-bootstrap();`;
-}
-
-function generateExpressMainJs() {
-  return `const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-require('dotenv').config();
+// Load environment variables
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.use('/api', require('./routes'));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    service: '${appName}',
+    timestamp: new Date().toISOString()
+  });
 });
 
-const PORT = process.env.PORT || 3000;
+// Start server
 app.listen(PORT, () => {
-  console.log(\`🚀 Server running on port \${PORT}\`);
+  console.log(\`🚀 ${appName} running on port \${PORT}\`);
+});` :
+    `const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: '${appName}',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 ${appName} running on port \${PORT}\`);
 });`;
+  writeFileSafe(path.join(appDir, "src", ts ? "main.ts" : "main.js"), mainContent);
 }
+
+// Removed unused function
+
+// Removed unused function
+
+// Removed unused function
 
 function generateNxLib(targetRoot, libName, ts) {
   const libDir = path.join(targetRoot, "libs", libName);
   
-  // Library package.json
-  const libPackageJson = generateLibPackageJson(libName, ts);
-  writeFileSafe(path.join(libDir, "package.json"), libPackageJson);
+  // Create basic package.json
+  const libPackageJson = {
+    "name": `@fiexpress/${libName}`,
+    "version": "1.0.0",
+    "main": ts ? "index.ts" : "index.js",
+    "scripts": {
+      "build": "nx build",
+      "test": "nx test"
+    }
+  };
+  writeFileSafe(path.join(libDir, "package.json"), JSON.stringify(libPackageJson, null, 2));
   
-  // Library configuration
-  const libConfig = generateLibConfig(libName, ts);
-  writeFileSafe(path.join(libDir, "project.json"), libConfig);
+  // Create basic project.json
+  const libConfig = {
+    "name": libName,
+    "root": `libs/${libName}`,
+    "sourceRoot": `libs/${libName}/src`,
+    "projectType": "library",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:tsc",
+        "outputs": ["{options.outputPath}"],
+        "options": {
+          "outputPath": `dist/libs/${libName}`,
+          "main": `libs/${libName}/src/index.${ts ? 'ts' : 'js'}`,
+          "tsConfig": `libs/${libName}/tsconfig.lib.json`
+        }
+      }
+    }
+  };
+  writeFileSafe(path.join(libDir, "project.json"), JSON.stringify(libConfig, null, 2));
   
-  // TypeScript config
-  if (ts) {
-    const tsConfig = generateLibTsConfig(libName);
-    writeFileSafe(path.join(libDir, "tsconfig.json"), tsConfig);
-    writeFileSafe(path.join(libDir, "tsconfig.lib.json"), tsConfig);
-  }
+  // Create src directory
+  fs.mkdirSync(path.join(libDir, "src"), { recursive: true });
   
-  // Jest config
-  const jestConfig = generateLibJestConfig(libName, ts);
-  writeFileSafe(path.join(libDir, "jest.config.js"), jestConfig);
-  
-  // ESLint config
-  const eslintConfig = generateLibEslintConfig(libName);
-  writeFileSafe(path.join(libDir, ".eslintrc.json"), eslintConfig);
-  
-  // Library source files
-  generateLibSource(targetRoot, libName, ts);
+  // Create basic index file
+  const indexContent = ts ? 
+    `export * from './lib/${libName}';` :
+    `module.exports = require('./lib/${libName}');`;
+  writeFileSafe(path.join(libDir, "src", ts ? "index.ts" : "index.js"), indexContent);
 }
 
-function generateLibSource(targetRoot, libName, ts) {
-  const libDir = path.join(targetRoot, "libs", libName, "src");
-  
-  // Index file
-  const indexFile = ts ? generateLibIndexTs(libName) : generateLibIndexJs(libName);
-  writeFileSafe(path.join(libDir, "index.ts"), indexFile);
-  
-  // Main library file
-  const mainFile = ts ? generateLibMainTs(libName) : generateLibMainJs(libName);
-  writeFileSafe(path.join(libDir, `lib/${libName}.ts`), mainFile);
-  
-  // Test file
-  const testFile = ts ? generateLibTestTs(libName) : generateLibTestJs(libName);
-  writeFileSafe(path.join(libDir, `lib/${libName}.spec.ts`), testFile);
-}
+// Removed unused function
 
 function generateNxScripts(ts) {
   return `#!/usr/bin/env node
@@ -509,337 +559,477 @@ volumes:
   postgres_data:`;
 }
 
-// Helper functions for generating specific configurations
-function generateAppPackageJson(appName, ts) {
+function generateTsconfigBase(ts) {
   return JSON.stringify({
-    "name": `@fiexpress/${appName}`,
+    "compileOnSave": false,
+    "compilerOptions": {
+      "rootDir": ".",
+      "sourceMap": true,
+      "declaration": false,
+      "moduleResolution": "node",
+      "emitDecoratorMetadata": true,
+      "experimentalDecorators": true,
+      "importHelpers": true,
+      "target": "es2015",
+      "module": "esnext",
+      "lib": ["es2020", "dom"],
+      "skipLibCheck": true,
+      "skipDefaultLibCheck": true,
+      "baseUrl": ".",
+      "paths": {
+        "@fiexpress/shared": ["libs/shared/src/index.ts"],
+        "@fiexpress/types": ["libs/types/src/index.ts"],
+        "@fiexpress/utils": ["libs/utils/src/index.ts"]
+      }
+    },
+    "exclude": ["node_modules", "tmp"]
+  }, null, 2);
+}
+
+function generateOrmSupport(targetRoot, ts) {
+  const db = process.env.FIEXPRESS_DB || "postgres";
+  const orm = process.env.FIEXPRESS_ORM || "auto";
+  
+  // Create database config directory
+  const configDir = path.join(targetRoot, "libs", "shared", "src", "config");
+  fs.mkdirSync(configDir, { recursive: true });
+  
+  // Create basic database config with imports
+  const dbConfig = ts ? 
+    `import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+// Database configuration
+export const databaseConfig = {
+  type: '${db}',
+  orm: '${orm}',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '${db === 'postgres' ? '5432' : db === 'mysql' ? '3306' : '27017'}'),
+  username: process.env.DB_USERNAME || '${db === 'postgres' ? 'postgres' : db === 'mysql' ? 'root' : 'admin'}',
+  password: process.env.DB_PASSWORD || '${db === 'postgres' ? 'postgres' : db === 'mysql' ? 'password' : 'password'}',
+  database: process.env.DB_NAME || 'fiexpress'
+};
+
+// Database connection
+export const connectDatabase = async () => {
+  try {
+    console.log('Connecting to database...');
+    // Add your database connection logic here
+    console.log('Database connected successfully!');
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    throw error;
+  }
+};` :
+    `const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+// Database configuration
+const databaseConfig = {
+  type: '${db}',
+  orm: '${orm}',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '${db === 'postgres' ? '5432' : db === 'mysql' ? '3306' : '27017'}'),
+  username: process.env.DB_USERNAME || '${db === 'postgres' ? 'postgres' : db === 'mysql' ? 'root' : 'admin'}',
+  password: process.env.DB_PASSWORD || '${db === 'postgres' ? 'postgres' : db === 'mysql' ? 'password' : 'password'}',
+  database: process.env.DB_NAME || 'fiexpress'
+};
+
+// Database connection
+const connectDatabase = async () => {
+  try {
+    console.log('Connecting to database...');
+    // Add your database connection logic here
+    console.log('Database connected successfully!');
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    throw error;
+  }
+};
+
+module.exports = { databaseConfig, connectDatabase };`;
+  
+  writeFileSafe(path.join(configDir, ts ? "database.config.ts" : "database.config.js"), dbConfig);
+  
+  // Create models directory
+  const modelsDir = path.join(targetRoot, "libs", "shared", "src", "models");
+  fs.mkdirSync(modelsDir, { recursive: true });
+  
+  // Create basic user model with imports
+  const userModel = ts ? 
+    `import { databaseConfig } from '../config/database.config';
+
+// User model
+export class User {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: Date;
+  updatedAt: Date;
+
+  constructor(id: string, email: string, name?: string) {
+    this.id = id;
+    this.email = email;
+    this.name = name;
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
+  }
+
+  // Basic CRUD operations
+  static async findAll() {
+    // Add your database query logic here
+    return [];
+  }
+
+  static async findById(id: string) {
+    // Add your database query logic here
+    return null;
+  }
+
+  static async create(data: any) {
+    // Add your database query logic here
+    return new User(Date.now().toString(), data.email, data.name);
+  }
+}` :
+    `const { databaseConfig } = require('../config/database.config');
+
+// User model
+class User {
+  constructor(id, email, name) {
+    this.id = id;
+    this.email = email;
+    this.name = name;
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
+  }
+
+  // Basic CRUD operations
+  static async findAll() {
+    // Add your database query logic here
+    return [];
+  }
+
+  static async findById(id) {
+    // Add your database query logic here
+    return null;
+  }
+
+  static async create(data) {
+    // Add your database query logic here
+    return new User(Date.now().toString(), data.email, data.name);
+  }
+}
+
+module.exports = { User };`;
+  
+  writeFileSafe(path.join(modelsDir, ts ? "user.model.ts" : "user.model.js"), userModel);
+  
+  // Create Prisma schema if using Prisma
+  if (db === "postgres" && (orm === "auto" || orm === "prisma")) {
+    const prismaDir = path.join(targetRoot, "prisma");
+    fs.mkdirSync(prismaDir, { recursive: true });
+    
+    const prismaSchema = `// Prisma schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}`;
+    
+    writeFileSafe(path.join(prismaDir, "schema.prisma"), prismaSchema);
+  }
+  
+  console.log(`🗄️ Database support (${db} + ${orm}) added successfully!`);
+}
+
+// Simplified ORM support - just create basic files and directories
+
+function generateMicroservicesSupport(targetRoot, ts) {
+  const services = process.env.FIEXPRESS_MICROSERVICES_SERVICES ? 
+    process.env.FIEXPRESS_MICROSERVICES_SERVICES.split(',') : 
+    ['user', 'product', 'order'];
+  
+  // Create microservice directories and basic files
+  services.forEach(service => {
+    const serviceDir = path.join(targetRoot, "apps", service + "-service");
+    fs.mkdirSync(serviceDir, { recursive: true });
+    
+    // Create basic package.json
+    const packageJson = {
+      "name": `@fiexpress/${service}-service`,
+      "version": "1.0.0",
+      "main": ts ? "main.ts" : "main.js",
+      "scripts": {
+        "build": "nx build",
+        "serve": "nx serve",
+        "test": "nx test"
+      }
+    };
+    writeFileSafe(path.join(serviceDir, "package.json"), JSON.stringify(packageJson, null, 2));
+    
+    // Create basic project.json
+    const projectJson = {
+      "name": `${service}-service`,
+      "root": `apps/${service}-service`,
+      "sourceRoot": `apps/${service}-service/src`,
+      "projectType": "application",
+      "targets": {
+        "build": {
+          "executor": "@nx/webpack:webpack",
+          "outputs": ["{options.outputPath}"],
+          "options": {
+            "target": "node",
+            "compiler": "tsc",
+            "outputPath": `dist/apps/${service}-service`,
+            "main": `apps/${service}-service/src/main.${ts ? 'ts' : 'js'}`,
+            "tsConfig": `apps/${service}-service/tsconfig.app.json`
+          }
+        },
+        "serve": {
+          "executor": "@nx/js:node",
+          "options": {
+            "buildTarget": `${service}-service:build`
+          }
+        }
+      }
+    };
+    writeFileSafe(path.join(serviceDir, "project.json"), JSON.stringify(projectJson, null, 2));
+    
+    // Create src directory
+    fs.mkdirSync(path.join(serviceDir, "src"), { recursive: true });
+    
+    // Create basic main file with imports
+    const mainContent = ts ? 
+      `import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: '${service}',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 ${service} service running on port \${PORT}\`);
+});` :
+      `const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: '${service}',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 ${service} service running on port \${PORT}\`);
+});`;
+    writeFileSafe(path.join(serviceDir, "src", ts ? "main.ts" : "main.js"), mainContent);
+  });
+  
+  // Create API Gateway
+  const gatewayDir = path.join(targetRoot, "apps", "api-gateway");
+  fs.mkdirSync(gatewayDir, { recursive: true });
+  
+  const gatewayPackageJson = {
+    "name": "@fiexpress/api-gateway",
     "version": "1.0.0",
     "main": ts ? "main.ts" : "main.js",
     "scripts": {
       "build": "nx build",
-      "serve": "nx serve",
-      "test": "nx test",
-      "lint": "nx lint"
-    }
-  }, null, 2);
-}
-
-function generateAppConfig(appName, ts, express, react, angular, next) {
-  const config = {
-    "name": appName,
-    "root": `apps/${appName}`,
-    "sourceRoot": `apps/${appName}/src`,
-    "projectType": "application",
-    "targets": {
-      "build": {
-        "executor": "@nx/webpack:webpack",
-        "outputs": ["{options.outputPath}"],
-        "options": {
-          "target": express ? "node" : "web",
-          "compiler": "tsc",
-          "outputPath": `dist/apps/${appName}`,
-          "main": `apps/${appName}/src/main.${ts ? 'ts' : 'js'}`,
-          "tsConfig": `apps/${appName}/tsconfig.app.json`,
-          "assets": [`apps/${appName}/src/assets`]
-        }
-      },
-      "serve": {
-        "executor": express ? "@nx/js:node" : "@nx/webpack:dev-server",
-        "options": {
-          "buildTarget": `${appName}:build`
-        }
-      },
-      "test": {
-        "executor": "@nx/jest:jest",
-        "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-        "options": {
-          "jestConfig": `apps/${appName}/jest.config.js`,
-          "passWithNoTests": true
-        }
-      },
-      "lint": {
-        "executor": "@nx/eslint:lint",
-        "outputs": ["{options.outputFile}"]
-      }
+      "serve": "nx serve"
     }
   };
+  writeFileSafe(path.join(gatewayDir, "package.json"), JSON.stringify(gatewayPackageJson, null, 2));
   
-  return JSON.stringify(config, null, 2);
-}
+  // Create API Gateway main file
+  const gatewayMainContent = ts ? 
+    `import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
 
-function generateAppTsConfig(appName) {
-  return JSON.stringify({
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-      "module": "commonjs",
-      "outDir": "../../dist/out-tsc",
-      "forceConsistentCasingInFileNames": true,
-      "strict": true,
-      "noImplicitOverride": true,
-      "noPropertyAccessFromIndexSignature": true,
-      "noImplicitReturns": true,
-      "noFallthroughCasesInSwitch": true
-    },
-    "files": [],
-    "include": [],
-    "references": [
-      {
-        "path": "./tsconfig.app.json"
-      }
-    ]
-  }, null, 2);
-}
+// Load environment variables
+dotenv.config();
 
-function generateAppJestConfig(appName, ts) {
-  return `module.exports = {
-  displayName: '${appName}',
-  preset: '../../jest.preset.js',
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\\\.ts$': 'ts-jest',
-  },
-  moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/apps/${appName}',
-};`;
-}
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-function generateAppEslintConfig(appName) {
-  return JSON.stringify({
-    "extends": ["../../.eslintrc.json"],
-    "ignorePatterns": ["!**/*"],
-    "overrides": [
-      {
-        "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
-        "rules": {}
-      }
-    ]
-  }, null, 2);
-}
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
 
-function generateLibPackageJson(libName, ts) {
-  return JSON.stringify({
-    "name": `@fiexpress/${libName}`,
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'api-gateway',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 API Gateway running on port \${PORT}\`);
+});` :
+    `const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'api-gateway',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 API Gateway running on port \${PORT}\`);
+});`;
+  
+  // Create src directory for API Gateway
+  fs.mkdirSync(path.join(gatewayDir, "src"), { recursive: true });
+  writeFileSafe(path.join(gatewayDir, "src", ts ? "main.ts" : "main.js"), gatewayMainContent);
+  
+  // Create microservices shared library
+  const microservicesLibDir = path.join(targetRoot, "libs", "microservices");
+  fs.mkdirSync(microservicesLibDir, { recursive: true });
+  
+  const microservicesPackageJson = {
+    "name": "@fiexpress/microservices",
     "version": "1.0.0",
-    "main": ts ? "index.ts" : "index.js",
+    "main": "index.ts",
     "scripts": {
-      "build": "nx build",
-      "test": "nx test",
-      "lint": "nx lint"
+      "build": "nx build"
     }
-  }, null, 2);
-}
-
-function generateLibConfig(libName, ts) {
-  return JSON.stringify({
-    "name": libName,
-    "root": `libs/${libName}`,
-    "sourceRoot": `libs/${libName}/src`,
-    "projectType": "library",
-    "targets": {
-      "build": {
-        "executor": "@nx/js:tsc",
-        "outputs": ["{options.outputPath}"],
-        "options": {
-          "outputPath": `dist/libs/${libName}`,
-          "main": `libs/${libName}/src/index.ts`,
-          "tsConfig": `libs/${libName}/tsconfig.lib.json`,
-          "assets": [`libs/${libName}/*.md`]
-        }
-      },
-      "test": {
-        "executor": "@nx/jest:jest",
-        "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-        "options": {
-          "jestConfig": `libs/${libName}/jest.config.js`,
-          "passWithNoTests": true
-        }
-      },
-      "lint": {
-        "executor": "@nx/eslint:lint",
-        "outputs": ["{options.outputFile}"]
-      }
-    }
-  }, null, 2);
-}
-
-function generateLibTsConfig(libName) {
-  return JSON.stringify({
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-      "module": "commonjs",
-      "outDir": "../../dist/out-tsc",
-      "forceConsistentCasingInFileNames": true,
-      "strict": true,
-      "noImplicitOverride": true,
-      "noPropertyAccessFromIndexSignature": true,
-      "noImplicitReturns": true,
-      "noFallthroughCasesInSwitch": true
-    },
-    "files": [],
-    "include": [],
-    "references": [
-      {
-        "path": "./tsconfig.lib.json"
-      }
-    ]
-  }, null, 2);
-}
-
-function generateLibJestConfig(libName, ts) {
-  return `module.exports = {
-  displayName: '${libName}',
-  preset: '../../jest.preset.js',
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\\\.ts$': 'ts-jest',
-  },
-  moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/libs/${libName}',
-};`;
-}
-
-function generateLibEslintConfig(libName) {
-  return JSON.stringify({
-    "extends": ["../../.eslintrc.json"],
-    "ignorePatterns": ["!**/*"],
-    "overrides": [
-      {
-        "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
-        "rules": {}
-      }
-    ]
-  }, null, 2);
-}
-
-function generateLibIndexTs(libName) {
-  return `export * from './lib/${libName}';`;
-}
-
-function generateLibIndexJs(libName) {
-  return `module.exports = require('./lib/${libName}');`;
-}
-
-function generateLibMainTs(libName) {
-  return `export class ${libName.charAt(0).toUpperCase() + libName.slice(1)} {
-  constructor() {
-    // Initialize ${libName}
-  }
+  };
+  writeFileSafe(path.join(microservicesLibDir, "package.json"), JSON.stringify(microservicesPackageJson, null, 2));
   
-  public getValue(): string {
-    return 'Hello from ${libName}!';
-  }
-}`;
+  console.log(`🏗️ Microservices support (${services.join(', ')}) added successfully!`);
 }
 
-function generateLibMainJs(libName) {
-  return `class ${libName.charAt(0).toUpperCase() + libName.slice(1)} {
-  constructor() {
-    // Initialize ${libName}
-  }
-  
-  getValue() {
-    return 'Hello from ${libName}!';
-  }
-}
+// Helper functions for generating specific configurations
+// Removed unused function
 
-module.exports = { ${libName.charAt(0).toUpperCase() + libName.slice(1)} };`;
-}
+// Removed unused function
 
-function generateLibTestTs(libName) {
-  return `import { ${libName.charAt(0).toUpperCase() + libName.slice(1)} } from './lib/${libName}';
+// Removed unused functions
 
-describe('${libName.charAt(0).toUpperCase() + libName.slice(1)}', () => {
-  it('should create an instance', () => {
-    expect(new ${libName.charAt(0).toUpperCase() + libName.slice(1)}()).toBeDefined();
-  });
-  
-  it('should return a value', () => {
-    const instance = new ${libName.charAt(0).toUpperCase() + libName.slice(1)}();
-    expect(instance.getValue()).toBe('Hello from ${libName}!');
-  });
-});`;
-}
+// Removed unused function
 
-function generateLibTestJs(libName) {
-  return `const { ${libName.charAt(0).toUpperCase() + libName.slice(1)} } = require('./lib/${libName}');
+// Removed unused function
 
-describe('${libName.charAt(0).toUpperCase() + libName.slice(1)}', () => {
-  it('should create an instance', () => {
-    expect(new ${libName.charAt(0).toUpperCase() + libName.slice(1)}()).toBeDefined();
-  });
-  
-  it('should return a value', () => {
-    const instance = new ${libName.charAt(0).toUpperCase() + libName.slice(1)}();
-    expect(instance.getValue()).toBe('Hello from ${libName}!');
-  });
-});`;
-}
+// Removed unused function
 
-function generateExpressAppModuleTs() {
-  return `import { Module } from '@nestjs/common';
-import { AppController } from './controllers/app.controller';
-import { AppService } from './services/app.service';
+// Removed unused function
 
-@Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule {}`;
-}
+// Removed unused function
 
-function generateExpressAppModuleJs() {
-  return `// Express app module configuration
-module.exports = {
-  // Module configuration
-};`;
-}
+// Removed unused function
 
-function generateExpressRoutesTs() {
-  return `import { Router } from 'express';
-import { AppController } from '../controllers/app.controller';
+// Removed unused function
 
-const router = Router();
-const appController = new AppController();
+// Removed unused function
 
-router.get('/', appController.getHello.bind(appController));
-router.get('/health', appController.getHealth.bind(appController));
+// Removed unused function
 
-export default router;`;
-}
+// Removed unused function
 
-function generateExpressRoutesJs() {
-  return `const express = require('express');
-const router = express.Router();
+// Removed unused function
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Hello from Express API!' });
-});
+// Removed unused function
 
-router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Removed unused function
 
-module.exports = router;`;
-}
+// Removed unused function
+
+// Removed unused function
 
 function generateExpressControllerTs() {
-  return `import { Controller, Get } from '@nestjs/common';
+  return `import { Request, Response } from 'express';
 import { AppService } from '../services/app.service';
 
-@Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  private appService: AppService;
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  constructor() {
+    this.appService = new AppService();
   }
 
-  @Get('health')
-  getHealth() {
-    return this.appService.getHealth();
-  }
+  public getHello = (req: Request, res: Response) => {
+    const message = this.appService.getHello();
+    res.json({ message });
+  };
+
+  public getHealth = (req: Request, res: Response) => {
+    const health = this.appService.getHealth();
+    res.json(health);
+  };
 }`;
 }
 
@@ -862,15 +1052,12 @@ module.exports = { AppController };`;
 }
 
 function generateExpressServiceTs() {
-  return `import { Injectable } from '@nestjs/common';
-
-@Injectable()
-export class AppService {
-  getHello(): string {
+  return `export class AppService {
+  public getHello(): string {
     return 'Hello from Express API!';
   }
 
-  getHealth() {
+  public getHealth() {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
