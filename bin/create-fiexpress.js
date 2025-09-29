@@ -252,6 +252,219 @@ function parseArgs() {
   return options;
 }
 
+async function createBasicProject(targetRoot, options) {
+  const { name, ts, db, orm, jwt, casl, roles, user, jest, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, cote, queues, queuesTypes, security, securityTools } = options;
+  
+  // Create basic directory structure
+  const dirs = [
+    "src",
+    "src/controllers",
+    "src/services", 
+    "src/middleware",
+    "src/routes",
+    "src/config",
+    "src/models",
+    "src/utils",
+    "tests",
+    "docs"
+  ];
+  
+  dirs.forEach(dir => {
+    const fullPath = path.join(targetRoot, dir);
+    fs.mkdirSync(fullPath, { recursive: true });
+  });
+  
+  // Create basic package.json
+  const packageJson = {
+    "name": name.toLowerCase(),
+    "version": "1.0.0",
+    "description": "Express.js application created with FiExpress",
+    "main": ts ? "dist/index.js" : "src/index.js",
+    "scripts": {
+      "start": ts ? "node dist/index.js" : "node src/index.js",
+      "dev": ts ? "ts-node src/index.ts" : "nodemon src/index.js",
+      "build": ts ? "tsc" : "echo 'No build step needed for JavaScript'",
+      "test": jest ? "jest" : "echo 'No tests configured'"
+    },
+    "dependencies": {
+      "express": "^4.18.2",
+      "cors": "^2.8.5",
+      "helmet": "^7.1.0"
+    },
+    "devDependencies": {},
+    "engines": {
+      "node": ">=18.0.0"
+    }
+  };
+  
+  // Add TypeScript dependencies if needed
+  if (ts) {
+    packageJson.devDependencies = {
+      ...packageJson.devDependencies,
+      "typescript": "^5.3.0",
+      "ts-node": "^10.9.0",
+      "@types/node": "^20.10.0",
+      "@types/express": "^4.17.21",
+      "@types/cors": "^2.8.17"
+    };
+  }
+  
+  // Add database dependencies
+  if (db === "postgres") {
+    if (orm === "prisma") {
+      packageJson.dependencies["@prisma/client"] = "^5.7.0";
+      packageJson.devDependencies["prisma"] = "^5.7.0";
+    } else if (orm === "sequelize") {
+      packageJson.dependencies["sequelize"] = "^6.35.0";
+      packageJson.dependencies["pg"] = "^8.11.3";
+      packageJson.dependencies["pg-hstore"] = "^2.3.4";
+    }
+  } else if (db === "mysql") {
+    if (orm === "sequelize") {
+      packageJson.dependencies["sequelize"] = "^6.35.0";
+      packageJson.dependencies["mysql2"] = "^3.6.5";
+    }
+  } else if (db === "mongodb") {
+    if (orm === "mongoose") {
+      packageJson.dependencies["mongoose"] = "^8.0.3";
+    }
+  }
+  
+  // Add JWT if needed
+  if (jwt) {
+    packageJson.dependencies["jsonwebtoken"] = "^9.0.2";
+    if (ts) {
+      packageJson.devDependencies["@types/jsonwebtoken"] = "^9.0.5";
+    }
+  }
+  
+  // Add dotenv if needed
+  if (dotenv) {
+    packageJson.dependencies["dotenv"] = "^16.3.1";
+  }
+  
+  // Add nodemon for development
+  packageJson.devDependencies["nodemon"] = "^3.0.2";
+  
+  // Write package.json
+  fs.writeFileSync(
+    path.join(targetRoot, "package.json"), 
+    JSON.stringify(packageJson, null, 2)
+  );
+  
+  // Create basic index file
+  const indexContent = ts ? 
+    `import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: '${name}',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 ${name} running on port \${PORT}\`);
+});` :
+    `const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: '${name}',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`🚀 ${name} running on port \${PORT}\`);
+});`;
+
+  fs.writeFileSync(
+    path.join(targetRoot, "src", ts ? "index.ts" : "index.js"),
+    indexContent
+  );
+  
+  // Create TypeScript config if needed
+  if (ts) {
+    const tsConfig = {
+      "compilerOptions": {
+        "target": "ES2020",
+        "module": "commonjs",
+        "lib": ["ES2020"],
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true
+      },
+      "include": ["src/**/*"],
+      "exclude": ["node_modules", "dist"]
+    };
+    
+    fs.writeFileSync(
+      path.join(targetRoot, "tsconfig.json"),
+      JSON.stringify(tsConfig, null, 2)
+    );
+  }
+  
+  // Create .env file if dotenv is enabled
+  if (dotenv) {
+    const envContent = `PORT=3000
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=${name.toLowerCase()}
+DB_USER=postgres
+DB_PASSWORD=password
+JWT_SECRET=your-secret-key
+`;
+    fs.writeFileSync(path.join(targetRoot, ".env"), envContent);
+  }
+  
+  // Create .gitignore
+  const gitignoreContent = `node_modules/
+dist/
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+coverage/
+.nyc_output/
+`;
+  fs.writeFileSync(path.join(targetRoot, ".gitignore"), gitignoreContent);
+  
+  console.log("✅ Basic project structure created");
+}
+
 async function createProject(options) {
   const { name, ts, db, orm, jwt, casl, roles, user, jest, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, cote, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
   
@@ -318,14 +531,11 @@ async function createProject(options) {
       // Run Nx-specific scaffolding
       await runPostClone(targetRoot);
     } else {
-      // For regular Express projects, clone template
-      const repoSpec = "developersailor/fiexpress-template";
-      console.log(`📥 Cloning template from ${repoSpec} into ./${name}...`);
+      // For regular Express projects, create from scratch
+      console.log(`🏗️ Creating Express project from scratch...`);
       
-      const { default: degit } = await import("degit");
-      const emitter = degit(repoSpec);
-      
-      await emitter.clone(targetRoot);
+      // Create basic project structure
+      await createBasicProject(targetRoot, options);
       
       // Run post-clone scaffolding
       await runPostClone(targetRoot);
