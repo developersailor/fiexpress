@@ -6,6 +6,19 @@ import { generateDockerSupport } from "./templates/docker.js";
 import { generateSwaggerSupport } from "./templates/swagger.js";
 import { generateHealthCheckSupport } from "./templates/health.js";
 import { generateRateLimitSupport } from "./templates/rate-limit.js";
+import { generateOAuthSupport } from "./templates/oauth.js";
+import { generateRedisSupport } from "./templates/redis.js";
+import { generateGraphQLSupport } from "./templates/graphql.js";
+import { generateWebSocketSupport } from "./templates/websocket.js";
+import { generateTemplateEngineSupport } from "./templates/template-engines.js";
+import { generateCSSFrameworkSupport } from "./templates/css-frameworks.js";
+import { generateE2ETestingSupport } from "./templates/e2e-testing.js";
+import { generateI18nSupport } from "./templates/i18n.js";
+import { generateMonitoringSupport } from "./templates/monitoring.js";
+import { generateMicroservicesSupport } from "./templates/microservices.js";
+import { generateMessageQueueSupport } from "./templates/message-queues.js";
+import { generateAdvancedSecuritySupport } from "./templates/advanced-security.js";
+import { generateNxWorkspaceSupport } from "./templates/nx-workspace.js";
 
 export async function runPostClone(targetRoot) {
   // Running post-clone scaffolding
@@ -545,6 +558,7 @@ async function generateDemoApp(targetRoot, ext) {
 async function generateAdditionalFeatures(targetRoot, options) {
   const { ts, db, jwt, redis } = options;
   
+  // Phase 1 Features
   // Docker support
   if (process.env.FIEXPRESS_DOCKER === "yes") {
     generateDockerSupport(targetRoot, { ts, db });
@@ -564,4 +578,114 @@ async function generateAdditionalFeatures(targetRoot, options) {
   if (process.env.FIEXPRESS_RATE_LIMIT === "yes") {
     generateRateLimitSupport(targetRoot, { ts, redis });
   }
+  
+  // Phase 2 Features
+  // OAuth2 authentication
+  if (process.env.FIEXPRESS_OAUTH === "yes") {
+    const providers = process.env.FIEXPRESS_OAUTH_PROVIDERS ? 
+      process.env.FIEXPRESS_OAUTH_PROVIDERS.split(',') : 
+      ['google', 'github', 'facebook'];
+    generateOAuthSupport(targetRoot, { ts, providers });
+  }
+  
+  // Redis cache
+  if (process.env.FIEXPRESS_REDIS === "yes") {
+    generateRedisSupport(targetRoot, { ts, session: true, cache: true });
+  }
+  
+  // GraphQL support
+  if (process.env.FIEXPRESS_GRAPHQL === "yes") {
+    generateGraphQLSupport(targetRoot, { ts, subscriptions: true });
+  }
+  
+  // WebSocket support
+  if (process.env.FIEXPRESS_WEBSOCKET === "yes") {
+    generateWebSocketSupport(targetRoot, { ts, auth: jwt });
+  }
+  
+  // Phase 3 Features
+  // Template engines
+  if (process.env.FIEXPRESS_TEMPLATE === "yes") {
+    const engine = process.env.FIEXPRESS_TEMPLATE_ENGINE || 'ejs';
+    generateTemplateEngineSupport(targetRoot, { ts, engine });
+  }
+  
+  // CSS frameworks
+  if (process.env.FIEXPRESS_CSS === "yes") {
+    const framework = process.env.FIEXPRESS_CSS_FRAMEWORK || 'bootstrap';
+    generateCSSFrameworkSupport(targetRoot, { ts, framework });
+  }
+  
+  // E2E testing
+  if (process.env.FIEXPRESS_E2E === "yes") {
+    const tools = process.env.FIEXPRESS_E2E_TOOLS ? 
+      process.env.FIEXPRESS_E2E_TOOLS.split(',') : 
+      ['playwright', 'cypress'];
+    generateE2ETestingSupport(targetRoot, { ts, tools });
+  }
+  
+  // Internationalization
+  if (process.env.FIEXPRESS_I18N === "yes") {
+    const languages = process.env.FIEXPRESS_I18N_LANGUAGES ? 
+      process.env.FIEXPRESS_I18N_LANGUAGES.split(',') : 
+      ['en', 'tr', 'es'];
+    generateI18nSupport(targetRoot, { ts, languages });
+  }
+  
+         // Phase 4 Features
+         // Advanced monitoring
+         if (process.env.FIEXPRESS_MONITORING === "yes") {
+           const tools = process.env.FIEXPRESS_MONITORING_TOOLS ?
+             process.env.FIEXPRESS_MONITORING_TOOLS.split(',') :
+             ['prometheus', 'grafana'];
+           generateMonitoringSupport(targetRoot, { ts, tools });
+         }
+
+         // Microservices support
+         if (process.env.FIEXPRESS_MICROSERVICES === "yes") {
+           const services = process.env.FIEXPRESS_MICROSERVICES_SERVICES ?
+             process.env.FIEXPRESS_MICROSERVICES_SERVICES.split(',') :
+             ['user', 'product', 'order'];
+           generateMicroservicesSupport(targetRoot, { ts, services });
+         }
+
+         // Message queues support
+         if (process.env.FIEXPRESS_QUEUES === "yes") {
+           const queues = process.env.FIEXPRESS_QUEUES_TYPES ?
+             process.env.FIEXPRESS_QUEUES_TYPES.split(',') :
+             ['rabbitmq', 'kafka'];
+           generateMessageQueueSupport(targetRoot, { ts, queues });
+         }
+
+         // Advanced security support
+         if (process.env.FIEXPRESS_SECURITY === "yes") {
+           const tools = process.env.FIEXPRESS_SECURITY_TOOLS ?
+             process.env.FIEXPRESS_SECURITY_TOOLS.split(',') :
+             ['helmet', 'csrf', 'validation', 'rate-limit'];
+           generateAdvancedSecuritySupport(targetRoot, { ts, tools });
+         }
+
+         // Nx workspace support
+         if (process.env.FIEXPRESS_NX === "yes") {
+           const apps = process.env.FIEXPRESS_NX_APPS ?
+             process.env.FIEXPRESS_NX_APPS.split(',') :
+             ['api', 'frontend'];
+           const libs = process.env.FIEXPRESS_NX_LIBS ?
+             process.env.FIEXPRESS_NX_LIBS.split(',') :
+             ['shared', 'types', 'utils'];
+           const express = process.env.FIEXPRESS_NX_EXPRESS === "yes";
+           const react = process.env.FIEXPRESS_NX_REACT === "yes";
+           const angular = process.env.FIEXPRESS_NX_ANGULAR === "yes";
+           const next = process.env.FIEXPRESS_NX_NEXT === "yes";
+           
+           generateNxWorkspaceSupport(targetRoot, { 
+             ts, 
+             apps, 
+             libs, 
+             express, 
+             react, 
+             angular, 
+             next 
+           });
+         }
 }

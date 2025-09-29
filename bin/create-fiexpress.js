@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import readline from "readline";
 import process from "process";
 import fs from "fs";
 import path from "path";
@@ -10,48 +9,8 @@ import { generateComponent } from "./generator.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
-function question(q) {
-  return new Promise((res) => rl.question(q, (a) => res((a || "").trim())));
-}
 
-async function interactiveSetup() {
-  console.log("🚀 FiExpress CLI - Creating new Express.js project");
-  console.log("This will create a new Express.js project with modern tooling.\n");
-
-  const name = await question("Project name: ");
-  if (!name) {
-    console.error("❌ Project name is required");
-    process.exit(1);
-  }
-
-  const useTypeScript = await question("Use TypeScript? (y/N): ");
-  const useDatabase = await question("Database (postgres/mysql/mongo/none) [postgres]: ");
-  const useORM = await question("ORM (prisma/sequelize/drizzle/mongoose/none) [auto]: ");
-  const useJWT = await question("Include JWT authentication? (y/N): ");
-  const useCASL = await question("Include CASL authorization? (y/N): ");
-  const useRoles = await question("Include role-based middleware? (y/N): ");
-  const useUser = await question("Include example user routes? (y/N): ");
-  const useJest = await question("Include Jest testing? (y/N): ");
-  const useDemo = await question("Demo app (weather/todo/blog/none) [none]: ");
-
-  return {
-    name,
-    ts: useTypeScript.toLowerCase() === "y",
-    db: useDatabase || "postgres",
-    orm: useORM || "auto",
-    jwt: useJWT.toLowerCase() === "y",
-    casl: useCASL.toLowerCase() === "y",
-    roles: useRoles.toLowerCase() === "y",
-    user: useUser.toLowerCase() === "y",
-    jest: useJest.toLowerCase() === "y",
-    demo: useDemo || "none"
-  };
-}
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -70,7 +29,28 @@ function parseArgs() {
     swagger: false,
     health: false,
     rateLimit: false,
-    redis: false
+    redis: false,
+    oauth: false,
+    graphql: false,
+    websocket: false,
+    template: false,
+    css: false,
+    e2e: false,
+    i18n: false,
+    monitoring: false,
+    microservices: false,
+    microservicesServices: [],
+    queues: false,
+    queuesTypes: [],
+    security: false,
+    securityTools: [],
+    nx: false,
+    nxApps: [],
+    nxLibs: [],
+    nxExpress: false,
+    nxReact: false,
+    nxAngular: false,
+    nxNext: false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -78,19 +58,19 @@ function parseArgs() {
     switch (arg) {
       case "--ts":
         options.ts = true;
-        break;
+      break;
       case "--db":
         options.db = args[++i] || "postgres";
-        break;
+      break;
       case "--orm":
         options.orm = args[++i] || "auto";
-        break;
+      break;
       case "--jwt":
         options.jwt = true;
-        break;
+      break;
       case "--casl":
         options.casl = true;
-        break;
+      break;
       case "--roles":
         options.roles = true;
         break;
@@ -121,6 +101,149 @@ function parseArgs() {
       case "--redis":
         options.redis = true;
         break;
+      case "--oauth":
+        options.oauth = true;
+        // Check for providers
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.oauthProviders = args[++i].split(',');
+        }
+      break;
+      case "--graphql":
+        options.graphql = true;
+      break;
+      case "--websocket":
+        options.websocket = true;
+      break;
+      case "--template":
+        options.template = true;
+        // Check for engine
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.templateEngine = args[++i];
+        }
+        break;
+      case "--css":
+        options.css = true;
+        // Check for framework
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.cssFramework = args[++i];
+        }
+        break;
+      case "--e2e":
+        options.e2e = true;
+        // Check for tools
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.e2eTools = args[++i].split(',');
+        }
+        break;
+      case "--i18n":
+        options.i18n = true;
+        // Check for languages
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.i18nLanguages = args[++i].split(',');
+        }
+        break;
+      case "--monitoring":
+        options.monitoring = true;
+        // Check for tools
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.monitoringTools = args[++i].split(',');
+        }
+        break;
+      case "--microservices":
+        options.microservices = true;
+        // Check for services
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.microservicesServices = args[++i].split(',');
+        }
+        break;
+      case "--queues":
+        options.queues = true;
+        // Check for queue types
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.queuesTypes = args[++i].split(',');
+        }
+        break;
+      case "--security":
+        options.security = true;
+        // Check for security tools
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.securityTools = args[++i].split(',');
+        }
+        break;
+      case "--nx":
+        options.nx = true;
+        // Set default Nx options when --nx is used
+        if (options.nxApps.length === 0) {
+          options.nxApps = ['api', 'frontend'];
+        }
+        if (options.nxLibs.length === 0) {
+          options.nxLibs = ['shared', 'types', 'utils'];
+        }
+        // Default to Express if no framework is specified
+        if (!options.nxExpress && !options.nxReact && !options.nxAngular && !options.nxNext) {
+          options.nxExpress = true;
+        }
+        break;
+      case "--nx-apps":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-apps requires --nx flag to be set first");
+          break;
+        }
+        // Check for apps
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.nxApps = args[++i].split(',');
+        }
+        break;
+      case "--nx-libs":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-libs requires --nx flag to be set first");
+          break;
+        }
+        // Check for libs
+        if (args[i + 1] && !args[i + 1].startsWith('--')) {
+          options.nxLibs = args[++i].split(',');
+        }
+        break;
+      case "--nx-express":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-express requires --nx flag to be set first");
+          break;
+        }
+        options.nxExpress = true;
+        options.nxReact = false;
+        options.nxAngular = false;
+        options.nxNext = false;
+        break;
+      case "--nx-react":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-react requires --nx flag to be set first");
+          break;
+        }
+        options.nxReact = true;
+        options.nxExpress = false;
+        options.nxAngular = false;
+        options.nxNext = false;
+        break;
+      case "--nx-angular":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-angular requires --nx flag to be set first");
+          break;
+        }
+        options.nxAngular = true;
+        options.nxExpress = false;
+        options.nxReact = false;
+        options.nxNext = false;
+        break;
+      case "--nx-next":
+        if (!options.nx) {
+          console.warn("⚠️  --nx-next requires --nx flag to be set first");
+          break;
+        }
+        options.nxNext = true;
+        options.nxExpress = false;
+        options.nxReact = false;
+        options.nxAngular = false;
+        break;
     }
   }
 
@@ -128,7 +251,7 @@ function parseArgs() {
 }
 
 async function createProject(options) {
-  const { name, ts, db, orm, jwt, casl, roles, user, jest, demo, dotenv, docker, swagger, health, rateLimit, redis } = options;
+  const { name, ts, db, orm, jwt, casl, roles, user, jest, demo, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
   
   // Set environment variables for scaffolding
   process.env.FIEXPRESS_TS = ts ? "yes" : "no";
@@ -146,6 +269,33 @@ async function createProject(options) {
   process.env.FIEXPRESS_HEALTH = health ? "yes" : "no";
   process.env.FIEXPRESS_RATE_LIMIT = rateLimit ? "yes" : "no";
   process.env.FIEXPRESS_REDIS = redis ? "yes" : "no";
+  process.env.FIEXPRESS_OAUTH = oauth ? "yes" : "no";
+  process.env.FIEXPRESS_OAUTH_PROVIDERS = oauthProviders ? oauthProviders.join(',') : '';
+  process.env.FIEXPRESS_GRAPHQL = graphql ? "yes" : "no";
+  process.env.FIEXPRESS_WEBSOCKET = websocket ? "yes" : "no";
+  process.env.FIEXPRESS_TEMPLATE = template ? "yes" : "no";
+  process.env.FIEXPRESS_TEMPLATE_ENGINE = templateEngine || 'ejs';
+  process.env.FIEXPRESS_CSS = css ? "yes" : "no";
+  process.env.FIEXPRESS_CSS_FRAMEWORK = cssFramework || 'bootstrap';
+  process.env.FIEXPRESS_E2E = e2e ? "yes" : "no";
+  process.env.FIEXPRESS_E2E_TOOLS = e2eTools ? e2eTools.join(',') : 'playwright,cypress';
+  process.env.FIEXPRESS_I18N = i18n ? "yes" : "no";
+  process.env.FIEXPRESS_I18N_LANGUAGES = i18nLanguages ? i18nLanguages.join(',') : 'en,tr,es';
+  process.env.FIEXPRESS_MONITORING = monitoring ? "yes" : "no";
+  process.env.FIEXPRESS_MONITORING_TOOLS = monitoringTools ? monitoringTools.join(',') : 'prometheus,grafana';
+  process.env.FIEXPRESS_MICROSERVICES = microservices ? "yes" : "no";
+  process.env.FIEXPRESS_MICROSERVICES_SERVICES = microservicesServices ? microservicesServices.join(',') : 'user,product,order';
+  process.env.FIEXPRESS_QUEUES = queues ? "yes" : "no";
+  process.env.FIEXPRESS_QUEUES_TYPES = queuesTypes ? queuesTypes.join(',') : 'rabbitmq,kafka';
+  process.env.FIEXPRESS_SECURITY = security ? "yes" : "no";
+  process.env.FIEXPRESS_SECURITY_TOOLS = securityTools ? securityTools.join(',') : 'helmet,csrf,validation,rate-limit';
+  process.env.FIEXPRESS_NX = nx ? "yes" : "no";
+  process.env.FIEXPRESS_NX_APPS = nxApps ? nxApps.join(',') : 'api,frontend';
+  process.env.FIEXPRESS_NX_LIBS = nxLibs ? nxLibs.join(',') : 'shared,types,utils';
+  process.env.FIEXPRESS_NX_EXPRESS = nxExpress ? "yes" : "no";
+  process.env.FIEXPRESS_NX_REACT = nxReact ? "yes" : "no";
+  process.env.FIEXPRESS_NX_ANGULAR = nxAngular ? "yes" : "no";
+  process.env.FIEXPRESS_NX_NEXT = nxNext ? "yes" : "no";
 
   const targetRoot = path.resolve(name);
   
@@ -235,10 +385,30 @@ Options for 'new' command:
   --health               Add health check endpoints
   --rate-limit           Add rate limiting
   --redis                Add Redis support
+  --oauth [providers]    Add OAuth2 authentication (google,github,facebook)
+  --graphql              Add GraphQL support
+  --websocket            Add WebSocket support
+  --template [engine]    Add template engine (ejs,pug,handlebars,mustache)
+  --css [framework]      Add CSS framework (bootstrap,tailwind,bulma,foundation)
+  --e2e [tools]         Add E2E testing (playwright,cypress)
+  --i18n [languages]    Add internationalization (en,tr,es)
+  --monitoring [tools]  Add advanced monitoring (prometheus,grafana)
+  --microservices [services] Add microservices support (user,product,order)
+  --queues [types]         Add message queues (rabbitmq,kafka)
+  --security [tools]       Add advanced security (helmet,csrf,validation,rate-limit)
+  --nx                    Create Nx monorepo workspace
+  --nx-apps [apps]        Nx applications (requires --nx)
+  --nx-libs [libs]        Nx libraries (requires --nx)
+  --nx-express            Use Express.js for Nx apps (requires --nx)
+  --nx-react              Use React for Nx apps (requires --nx)
+  --nx-angular            Use Angular for Nx apps (requires --nx)
+  --nx-next               Use Next.js for Nx apps (requires --nx)
 
 Examples:
   npx fiexpress new my-api
   npx fiexpress new my-api --ts --db postgres --jwt --casl
+  npx fiexpress new my-nx-workspace --nx --nx-apps api,frontend --nx-libs shared,types
+  npx fiexpress new my-monorepo --nx --nx-express --nx-react --ts
   npx fiexpress generate controller UserController
   npx fiexpress generate resource Product
 `);
@@ -248,7 +418,7 @@ Examples:
   const command = args[0];
 
   if (command === "--help" || command === "-h") {
-    console.log(`
+  console.log(`
 🚀 FiExpress CLI - Express.js Project Generator
 
 Usage:
@@ -273,26 +443,46 @@ Options for 'new' command:
   --health               Add health check endpoints
   --rate-limit           Add rate limiting
   --redis                Add Redis support
+  --oauth [providers]    Add OAuth2 authentication (google,github,facebook)
+  --graphql              Add GraphQL support
+  --websocket            Add WebSocket support
+  --template [engine]    Add template engine (ejs,pug,handlebars,mustache)
+  --css [framework]      Add CSS framework (bootstrap,tailwind,bulma,foundation)
+  --e2e [tools]         Add E2E testing (playwright,cypress)
+  --i18n [languages]    Add internationalization (en,tr,es)
+  --monitoring [tools]  Add advanced monitoring (prometheus,grafana)
+  --microservices [services] Add microservices support (user,product,order)
+  --queues [types]         Add message queues (rabbitmq,kafka)
+  --security [tools]       Add advanced security (helmet,csrf,validation,rate-limit)
+  --nx                    Create Nx monorepo workspace
+  --nx-apps [apps]        Nx applications (requires --nx)
+  --nx-libs [libs]        Nx libraries (requires --nx)
+  --nx-express            Use Express.js for Nx apps (requires --nx)
+  --nx-react              Use React for Nx apps (requires --nx)
+  --nx-angular            Use Angular for Nx apps (requires --nx)
+  --nx-next               Use Next.js for Nx apps (requires --nx)
 
 Examples:
   npx fiexpress new my-api
   npx fiexpress new my-api --ts --db postgres --jwt --casl
+  npx fiexpress new my-nx-workspace --nx --nx-apps api,frontend --nx-libs shared,types
+  npx fiexpress new my-monorepo --nx --nx-express --nx-react --ts
   npx fiexpress generate controller UserController
   npx fiexpress generate resource Product
 `);
     return;
-  }
+}
 
   if (command === "--version" || command === "-v") {
-    try {
+  try {
       const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../package.json"), "utf8"));
-      console.log(pkg.version);
-    } catch {
+    console.log(pkg.version);
+  } catch {
       console.log("1.0.0");
     }
-    return;
-  }
-
+      return;
+    }
+    
   if (command === "new") {
     const name = args[1];
     if (!name) {
@@ -309,9 +499,9 @@ Examples:
     await handleGenerateCommand(args.slice(1));
   } else if (command === "add") {
     await handleAddCommand();
-  } else {
-    console.error(`❌ Unknown command: ${command}`);
-    console.log("Run 'npx fiexpress --help' to see available commands.");
+    } else {
+      console.error(`❌ Unknown command: ${command}`);
+      console.log("Run 'npx fiexpress --help' to see available commands.");
     process.exit(1);
   }
 }
@@ -319,15 +509,15 @@ Examples:
 // Handle uncaught errors
 process.on("uncaughtException", (err) => {
   console.error("❌ Error:", err.message);
-  process.exit(1);
+        process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
   console.error("❌ Error:", err.message);
-  process.exit(1);
+          process.exit(1);
 });
 
 main().catch((err) => {
   console.error("❌ Error:", err.message);
-  process.exit(1);
+    process.exit(1);
 });

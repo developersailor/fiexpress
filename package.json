@@ -1,6 +1,6 @@
 {
   "name": "fiexpress",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "NestJS CLI-like tool for Express.js projects",
   "keywords": [
     "expressjs",
@@ -37,7 +37,11 @@
   "scripts": {
     "prepublishOnly": "echo 'Publishing FiExpress CLI...'",
     "lint": "eslint bin --ext .js",
-    "lint:fix": "eslint bin --ext .js --fix"
+    "lint:fix": "eslint bin --ext .js --fix",
+    "test": "node bin/create-fiexpress.js",
+    "test:help": "node bin/create-fiexpress.js --help",
+    "test:link": "npm link && echo 'CLI linked globally. Test with: fiexpress --help'",
+    "test:pack": "npm pack && echo 'Package created. Test with: npm install ./fiexpress-*.tgz'"
   },
   "dependencies": {
     "degit": "^2.8.0"

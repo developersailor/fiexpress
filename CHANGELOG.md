@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2024-12-19
+
+### Added
+- **Advanced Security Support**: Comprehensive security features including Helmet, CSRF protection, input validation, and rate limiting
+- **Message Queue Integration**: Support for RabbitMQ and Kafka message queues with producers, consumers, and middleware
+- **Microservices Architecture**: Cote-based microservices support with service discovery, API gateway, and inter-service communication
+- **Enhanced OAuth2 Support**: Improved OAuth2 implementation with multiple providers (Google, GitHub, Facebook)
+- **Advanced Monitoring**: Prometheus and Grafana integration for comprehensive application monitoring
+- **Template Engine Support**: Multiple template engines (EJS, Pug, Handlebars, Mustache) with full integration
+- **CSS Framework Integration**: Support for Bootstrap, Tailwind CSS, Bulma, and Foundation
+- **E2E Testing Support**: Playwright and Cypress integration for end-to-end testing
+- **Internationalization (i18n)**: Multi-language support with configurable language packs
+- **WebSocket Support**: Real-time communication with Socket.IO integration
+- **GraphQL Support**: Complete GraphQL implementation with Apollo Server
+- **Redis Integration**: Enhanced Redis support with caching, sessions, and pub/sub
+- **Enhanced CLI Options**: New command-line options for all advanced features
+- **Improved Test Scripts**: Better testing utilities with npm scripts for development
+- **Nx Monorepo Support**: Complete Nx workspace integration with Express.js, React, Angular, and Next.js support
+
+### Enhanced
+- **CLI Interface**: More intuitive command structure with better help documentation
+- **Template Generation**: Improved template generation with better error handling
+- **Project Structure**: Enhanced project scaffolding with better organization
+- **Dependency Management**: Better dependency resolution and package management
+- **Documentation**: Comprehensive documentation for all new features
+
+### Fixed
+- **Template Loading**: Fixed template loading issues for new features
+- **CLI Parsing**: Improved command-line argument parsing for complex options
+- **Error Handling**: Better error messages and debugging information
+- **Compatibility**: Enhanced compatibility across different Node.js versions
+
 ## [2.0.0] - 2024-01-15
 
 ### Added
@@ -61,6 +93,29 @@ npx fiexpress new <name> [options]
 - `--tsyringe` - Enable tsyringe dependency injection
 - `--demo <type>` - Create demo app (weather|todo|blog)
 - `--dotenv` - Add .env.example file
+- `--docker` - Add Docker support
+- `--swagger` - Add Swagger/OpenAPI documentation
+- `--health` - Add health check endpoints
+- `--rate-limit` - Add rate limiting
+- `--redis` - Add Redis support
+- `--oauth [providers]` - Add OAuth2 authentication (google,github,facebook)
+- `--graphql` - Add GraphQL support
+- `--websocket` - Add WebSocket support
+- `--template [engine]` - Add template engine (ejs,pug,handlebars,mustache)
+- `--css [framework]` - Add CSS framework (bootstrap,tailwind,bulma,foundation)
+- `--e2e [tools]` - Add E2E testing (playwright,cypress)
+- `--i18n [languages]` - Add internationalization (en,tr,es)
+- `--monitoring [tools]` - Add advanced monitoring (prometheus,grafana)
+- `--microservices [services]` - Add microservices support (user,product,order)
+- `--queues [types]` - Add message queues (rabbitmq,kafka)
+- `--security [tools]` - Add advanced security (helmet,csrf,validation,rate-limit)
+- `--nx` - Create Nx monorepo workspace
+- `--nx-apps [apps]` - Nx applications (requires --nx)
+- `--nx-libs [libs]` - Nx libraries (requires --nx)
+- `--nx-express` - Use Express.js for Nx apps (requires --nx)
+- `--nx-react` - Use React for Nx apps (requires --nx)
+- `--nx-angular` - Use Angular for Nx apps (requires --nx)
+- `--nx-next` - Use Next.js for Nx apps (requires --nx)
 
 ### Code Generation
 ```bash
@@ -103,6 +158,87 @@ npx fiexpress new fullstack-api \
 ### Quick JavaScript Project
 ```bash
 npx fiexpress new quick-api --db mongo --orm mongoose --jwt --demo weather
+```
+
+### Advanced Full-Stack Project with All Features
+```bash
+npx fiexpress new enterprise-api \
+  --ts \
+  --db postgres \
+  --orm prisma \
+  --jwt \
+  --casl \
+  --user \
+  --roles \
+  --docker \
+  --swagger \
+  --health \
+  --rate-limit \
+  --redis \
+  --oauth google,github \
+  --graphql \
+  --websocket \
+  --template ejs \
+  --css tailwind \
+  --e2e playwright \
+  --i18n en,tr \
+  --monitoring prometheus,grafana \
+  --microservices user,product,order \
+  --queues rabbitmq,kafka \
+  --security helmet,csrf,validation
+```
+
+### Microservices Project
+```bash
+npx fiexpress new microservices-app \
+  --ts \
+  --microservices user,product,order,payment \
+  --queues rabbitmq \
+  --redis \
+  --monitoring prometheus \
+  --docker
+```
+
+### Real-time Application
+```bash
+npx fiexpress new realtime-app \
+  --ts \
+  --websocket \
+  --redis \
+  --oauth google \
+  --template handlebars \
+  --css bootstrap
+```
+
+### Nx Monorepo with Express.js and React
+```bash
+npx fiexpress new nx-monorepo \
+  --nx \
+  --nx-apps api,frontend,admin \
+  --nx-libs shared,types,utils \
+  --nx-express \
+  --nx-react \
+  --ts \
+  --jwt \
+  --swagger
+```
+
+### Nx Monorepo with Full-Stack Support
+```bash
+npx fiexpress new enterprise-monorepo \
+  --nx \
+  --nx-apps api,frontend,mobile \
+  --nx-libs shared,types,utils,auth \
+  --nx-express \
+  --nx-next \
+  --ts \
+  --db postgres \
+  --orm prisma \
+  --jwt \
+  --casl \
+  --redis \
+  --graphql \
+  --monitoring prometheus
 ```
 
 ## Generated Project Structure

@@ -116,7 +116,6 @@ module.exports = { swaggerUi, specs };
 }
 
 function generateSwaggerMiddleware(ts) {
-  const ext = ts ? 'ts' : 'js';
   
   if (ts) {
     return `import { Request, Response, NextFunction } from 'express';
