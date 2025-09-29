@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { writeFileSafe, addDepsToPackageJson, createNewPackageJson } from "./utils.js";
+import { writeFileSafe, createNewPackageJson } from "./utils.js";
 import { generateWeatherDemo, generateTodoDemo, generateBlogDemo } from "./demos.js";
+import { generateDockerSupport } from "./templates/docker.js";
+import { generateSwaggerSupport } from "./templates/swagger.js";
+import { generateHealthCheckSupport } from "./templates/health.js";
+import { generateRateLimitSupport } from "./templates/rate-limit.js";
 
 export async function runPostClone(targetRoot) {
   // Running post-clone scaffolding
@@ -81,6 +85,9 @@ export async function runPostClone(targetRoot) {
   if (process.env.FIEXPRESS_DEMO !== "none") {
     await generateDemoApp(targetRoot, ext);
   }
+
+  // Generate additional features
+  await generateAdditionalFeatures(targetRoot, options);
 
   // Dependencies are already added in createNewPackageJson
 }
@@ -255,7 +262,7 @@ async function setupTypeScript(toInstall, orm) {
   }
 }
 
-async function setupJest(toInstall, targetRoot, ext) {
+async function setupJest(toInstall, targetRoot) {
   toInstall.dev["jest"] = "^29.7.0";
   toInstall.dev["supertest"] = "^6.3.3";
   
@@ -393,7 +400,7 @@ describe('App', () => {
   // Added Jest testing framework
 }
 
-async function setupESLintPrettier(toInstall, targetRoot, ext) {
+async function setupESLintPrettier(toInstall, targetRoot) {
   // Add ESLint and Prettier configuration
   if (process.env.FIEXPRESS_TS === "yes") {
     toInstall.dev["eslint"] = "^8.50.0";
@@ -534,3 +541,27 @@ async function generateDemoApp(targetRoot, ext) {
 }
 
 // Demo app generators are implemented in demos.js
+
+async function generateAdditionalFeatures(targetRoot, options) {
+  const { ts, db, jwt, redis } = options;
+  
+  // Docker support
+  if (process.env.FIEXPRESS_DOCKER === "yes") {
+    generateDockerSupport(targetRoot, { ts, db });
+  }
+  
+  // Swagger documentation
+  if (process.env.FIEXPRESS_SWAGGER === "yes") {
+    generateSwaggerSupport(targetRoot, { ts, auth: jwt });
+  }
+  
+  // Health checks
+  if (process.env.FIEXPRESS_HEALTH === "yes") {
+    generateHealthCheckSupport(targetRoot, { ts, db, redis });
+  }
+  
+  // Rate limiting
+  if (process.env.FIEXPRESS_RATE_LIMIT === "yes") {
+    generateRateLimitSupport(targetRoot, { ts, redis });
+  }
+}

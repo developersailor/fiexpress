@@ -1,14 +1,11 @@
 #!/usr/bin/env node
-import { spawn } from "child_process";
 import readline from "readline";
 import process from "process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { writeFileSafe, copyLocalTemplateToDst } from "./utils.js";
 import { runPostClone } from "./scaffolding.js";
 import { generateComponent } from "./generator.js";
-import { generateWeatherDemo, generateTodoDemo, generateBlogDemo } from "./demos.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,7 +65,12 @@ function parseArgs() {
     user: false,
     jest: false,
     demo: "none",
-    dotenv: true
+    dotenv: true,
+    docker: false,
+    swagger: false,
+    health: false,
+    rateLimit: false,
+    redis: false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -104,6 +106,21 @@ function parseArgs() {
       case "--no-dotenv":
         options.dotenv = false;
         break;
+      case "--docker":
+        options.docker = true;
+        break;
+      case "--swagger":
+        options.swagger = true;
+        break;
+      case "--health":
+        options.health = true;
+        break;
+      case "--rate-limit":
+        options.rateLimit = true;
+        break;
+      case "--redis":
+        options.redis = true;
+        break;
     }
   }
 
@@ -111,7 +128,7 @@ function parseArgs() {
 }
 
 async function createProject(options) {
-  const { name, ts, db, orm, jwt, casl, roles, user, jest, demo, dotenv } = options;
+  const { name, ts, db, orm, jwt, casl, roles, user, jest, demo, dotenv, docker, swagger, health, rateLimit, redis } = options;
   
   // Set environment variables for scaffolding
   process.env.FIEXPRESS_TS = ts ? "yes" : "no";
@@ -124,6 +141,11 @@ async function createProject(options) {
   process.env.FIEXPRESS_JEST = jest ? "yes" : "no";
   process.env.FIEXPRESS_DEMO = demo;
   process.env.FIEXPRESS_DOTENV = dotenv ? "yes" : "no";
+  process.env.FIEXPRESS_DOCKER = docker ? "yes" : "no";
+  process.env.FIEXPRESS_SWAGGER = swagger ? "yes" : "no";
+  process.env.FIEXPRESS_HEALTH = health ? "yes" : "no";
+  process.env.FIEXPRESS_RATE_LIMIT = rateLimit ? "yes" : "no";
+  process.env.FIEXPRESS_REDIS = redis ? "yes" : "no";
 
   const targetRoot = path.resolve(name);
   
@@ -208,6 +230,11 @@ Options for 'new' command:
   --jest                 Include Jest testing
   --demo <type>          Create demo app (weather|todo|blog)
   --no-dotenv            Skip .env.example file
+  --docker               Add Docker support
+  --swagger              Add Swagger/OpenAPI documentation
+  --health               Add health check endpoints
+  --rate-limit           Add rate limiting
+  --redis                Add Redis support
 
 Examples:
   npx fiexpress new my-api
@@ -241,6 +268,11 @@ Options for 'new' command:
   --jest                 Include Jest testing
   --demo <type>          Create demo app (weather|todo|blog)
   --no-dotenv            Skip .env.example file
+  --docker               Add Docker support
+  --swagger              Add Swagger/OpenAPI documentation
+  --health               Add health check endpoints
+  --rate-limit           Add rate limiting
+  --redis                Add Redis support
 
 Examples:
   npx fiexpress new my-api
