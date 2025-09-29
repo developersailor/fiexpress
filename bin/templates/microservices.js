@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateMicroservicesSupport(targetRoot, options = {}) {
   const { ts = false, services = ['user', 'product', 'order'] } = options;
@@ -838,7 +839,7 @@ module.exports.default = InterServiceCommunication;
 }
 
 function updatePackageJsonWithCote(targetRoot) {
-  const fs = require('fs');
+  // fs is already imported at the top of the file
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {
