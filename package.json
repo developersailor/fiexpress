@@ -1,6 +1,6 @@
 {
   "name": "fiexpress",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "NestJS CLI-like tool for Express.js projects",
   "keywords": [
     "expressjs",
