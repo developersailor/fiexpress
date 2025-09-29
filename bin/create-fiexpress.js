@@ -305,17 +305,28 @@ async function createProject(options) {
   }
 
   try {
-    // Clone template
-    const repoSpec = "developersailor/fiexpress-template";
-    console.log(`📥 Cloning template from ${repoSpec} into ./${name}...`);
-    
-    const { default: degit } = await import("degit");
-    const emitter = degit(repoSpec);
-    
-    await emitter.clone(targetRoot);
-    
-    // Run post-clone scaffolding
-    await runPostClone(targetRoot);
+    if (nx) {
+      // For Nx workspaces, create from scratch
+      console.log(`🏗️ Creating Nx workspace from scratch...`);
+      
+      // Create directory
+      fs.mkdirSync(targetRoot, { recursive: true });
+      
+      // Run Nx-specific scaffolding
+      await runPostClone(targetRoot);
+    } else {
+      // For regular Express projects, clone template
+      const repoSpec = "developersailor/fiexpress-template";
+      console.log(`📥 Cloning template from ${repoSpec} into ./${name}...`);
+      
+      const { default: degit } = await import("degit");
+      const emitter = degit(repoSpec);
+      
+      await emitter.clone(targetRoot);
+      
+      // Run post-clone scaffolding
+      await runPostClone(targetRoot);
+    }
     
     console.log("✅ Project created successfully!");
     console.log("Scaffolding complete. Next steps:");
