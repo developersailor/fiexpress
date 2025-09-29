@@ -43,6 +43,11 @@ export function generateNxWorkspaceSupport(targetRoot, options = {}) {
     generateMicroservicesSupport(targetRoot, ts);
   }
   
+  // Generate Cote support if enabled
+  if (process.env.FIEXPRESS_COTE === "yes") {
+    generateCoteSupport(targetRoot, ts);
+  }
+  
   // Nx scripts
   const nxScripts = generateNxScripts(ts);
   writeFileSafe(path.join(targetRoot, "scripts", "nx-scripts.js"), nxScripts);
@@ -62,7 +67,7 @@ export function generateNxWorkspaceSupport(targetRoot, options = {}) {
   console.log(`🏗️ Nx workspace with ${apps.length} apps and ${libs.length} libs created successfully!`);
 }
 
-function generateNxConfig(ts) {
+function generateNxConfig() {
   return JSON.stringify({
     "version": 2,
     "namedInputs": {
@@ -110,7 +115,7 @@ function generateNxConfig(ts) {
   }, null, 2);
 }
 
-function generateNxPackageJson(ts, apps, libs) {
+function generateNxPackageJson(ts) {
   const dependencies = {
     "@nx/express": "^18.0.0",
     "@nx/node": "^18.0.0",
@@ -180,89 +185,9 @@ function generateNxPackageJson(ts, apps, libs) {
   }, null, 2);
 }
 
-function generateWorkspaceConfig(ts) {
-  return JSON.stringify({
-    "version": 2,
-    "projects": {
-      "api": {
-        "root": "apps/api",
-        "sourceRoot": "apps/api/src",
-        "projectType": "application",
-        "targets": {
-          "build": {
-            "executor": "@nx/webpack:webpack",
-            "outputs": ["{options.outputPath}"],
-            "options": {
-              "target": "node",
-              "compiler": "tsc",
-              "outputPath": "dist/apps/api",
-              "main": "apps/api/src/main.ts",
-              "tsConfig": "apps/api/tsconfig.app.json",
-              "assets": ["apps/api/src/assets"]
-            }
-          },
-          "serve": {
-            "executor": "@nx/js:node",
-            "options": {
-              "buildTarget": "api:build"
-            }
-          },
-          "test": {
-            "executor": "@nx/jest:jest",
-            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-            "options": {
-              "jestConfig": "apps/api/jest.config.ts",
-              "passWithNoTests": true
-            }
-          },
-          "lint": {
-            "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"]
-          }
-        }
-      },
-      "frontend": {
-        "root": "apps/frontend",
-        "sourceRoot": "apps/frontend/src",
-        "projectType": "application",
-        "targets": {
-          "build": {
-            "executor": "@nx/webpack:webpack",
-            "outputs": ["{options.outputPath}"],
-            "options": {
-              "target": "web",
-              "compiler": "tsc",
-              "outputPath": "dist/apps/frontend",
-              "main": "apps/frontend/src/main.ts",
-              "tsConfig": "apps/frontend/tsconfig.app.json",
-              "assets": ["apps/frontend/src/assets"]
-            }
-          },
-          "serve": {
-            "executor": "@nx/webpack:dev-server",
-            "options": {
-              "buildTarget": "frontend:build"
-            }
-          },
-          "test": {
-            "executor": "@nx/jest:jest",
-            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-            "options": {
-              "jestConfig": "apps/frontend/jest.config.ts",
-              "passWithNoTests": true
-            }
-          },
-          "lint": {
-            "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"]
-          }
-        }
-      }
-    }
-  }, null, 2);
-}
+// Removed unused function
 
-function generateNxApp(targetRoot, appName, ts, express, react, angular, next) {
+function generateNxApp(targetRoot, appName, ts) {
   const appDir = path.join(targetRoot, "apps", appName);
   
   // Create basic package.json
@@ -425,7 +350,7 @@ function generateNxLib(targetRoot, libName, ts) {
 
 // Removed unused function
 
-function generateNxScripts(ts) {
+function generateNxScripts() {
   return `#!/usr/bin/env node
 
 const { execSync } = require('child_process');
@@ -464,7 +389,7 @@ if (commands[command]) {
 }`;
 }
 
-function generateNxDockerConfig(ts) {
+function generateNxDockerConfig() {
   return `# Multi-stage build for Nx workspace
 FROM node:18-alpine AS base
 
@@ -514,7 +439,7 @@ EXPOSE 3000
 CMD ["node", "dist/apps/api/main.js"]`;
 }
 
-function generateNxDockerCompose(ts) {
+function generateNxDockerCompose() {
   return `version: '3.8'
 
 services:
@@ -559,7 +484,7 @@ volumes:
   postgres_data:`;
 }
 
-function generateTsconfigBase(ts) {
+function generateTsconfigBase() {
   return JSON.stringify({
     "compileOnSave": false,
     "compilerOptions": {
@@ -973,6 +898,298 @@ app.listen(PORT, () => {
   console.log(`🏗️ Microservices support (${services.join(', ')}) added successfully!`);
 }
 
+function generateCoteSupport(targetRoot, ts) {
+  // Create Cote service discovery
+  generateCoteServiceDiscovery(targetRoot, ts);
+  
+  // Create Cote inter-service communication
+  generateCoteCommunication(targetRoot, ts);
+  
+  // Create Cote shared library
+  generateCoteLib(targetRoot, ts);
+  
+  console.log(`🔗 Cote microservice communication support added successfully!`);
+}
+
+function generateCoteServiceDiscovery(targetRoot, ts) {
+  const coteDir = path.join(targetRoot, "libs", "shared", "src", "cote");
+  fs.mkdirSync(coteDir, { recursive: true });
+  
+  // Cote service discovery
+  const serviceDiscovery = ts ? 
+    `import { Requester, Responder } from 'cote';
+
+export class CoteServiceDiscovery {
+  private requester: Requester;
+  private responder: Responder;
+
+  constructor(serviceName: string, port?: number) {
+    this.requester = new Requester({
+      name: \`\${serviceName} requester\`,
+      key: 'cote',
+      port: port || 5000
+    });
+
+    this.responder = new Responder({
+      name: \`\${serviceName} responder\`,
+      key: 'cote',
+      port: port || 5000
+    });
+  }
+
+  public async callService(serviceName: string, method: string, data?: any) {
+    return new Promise((resolve, reject) => {
+      this.requester.send({
+        type: \`\${serviceName}.\${method}\`,
+        data: data || {}
+      }, (response: any) => {
+        if (response.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response.result);
+        }
+      });
+    });
+  }
+
+  public registerHandler(method: string, handler: (data: any) => any) {
+    this.responder.on(method, handler);
+  }
+
+  public close() {
+    this.requester.close();
+    this.responder.close();
+  }
+}` :
+    `const { Requester, Responder } = require('cote');
+
+class CoteServiceDiscovery {
+  constructor(serviceName, port) {
+    this.requester = new Requester({
+      name: \`\${serviceName} requester\`,
+      key: 'cote',
+      port: port || 5000
+    });
+
+    this.responder = new Responder({
+      name: \`\${serviceName} responder\`,
+      key: 'cote',
+      port: port || 5000
+    });
+  }
+
+  async callService(serviceName, method, data) {
+    return new Promise((resolve, reject) => {
+      this.requester.send({
+        type: \`\${serviceName}.\${method}\`,
+        data: data || {}
+      }, (response) => {
+        if (response.error) {
+          reject(new Error(response.error));
+        } else {
+          resolve(response.result);
+        }
+      });
+    });
+  }
+
+  registerHandler(method, handler) {
+    this.responder.on(method, handler);
+  }
+
+  close() {
+    this.requester.close();
+    this.responder.close();
+  }
+}
+
+module.exports = { CoteServiceDiscovery };`;
+  
+  writeFileSafe(path.join(coteDir, ts ? "service.discovery.ts" : "service.discovery.js"), serviceDiscovery);
+}
+
+function generateCoteCommunication(targetRoot, ts) {
+  const coteDir = path.join(targetRoot, "libs", "shared", "src", "cote");
+  
+  // Cote inter-service communication
+  const communication = ts ? 
+    `import { CoteServiceDiscovery } from './service.discovery';
+
+export class CoteCommunication {
+  private serviceDiscovery: CoteServiceDiscovery;
+
+  constructor(serviceName: string, port?: number) {
+    this.serviceDiscovery = new CoteServiceDiscovery(serviceName, port);
+  }
+
+  public async callService(serviceName: string, method: string, data?: any) {
+    try {
+      return await this.serviceDiscovery.callService(serviceName, method, data);
+    } catch (error) {
+      console.error(\`Failed to call service \${serviceName}.\${method}:\`, error);
+      throw error;
+    }
+  }
+
+  public registerHandler(method: string, handler: (data: any) => any) {
+    this.serviceDiscovery.registerHandler(method, handler);
+  }
+
+  public async broadcast(event: string, data: any) {
+    // Broadcast to all services
+    const services = ['user', 'product', 'order'];
+    const promises = services.map(service => 
+      this.callService(service, event, data).catch(error => {
+        console.error(\`Failed to broadcast to \${service}:\`, error);
+        return null;
+      })
+    );
+    
+    return Promise.allSettled(promises);
+  }
+
+  public close() {
+    this.serviceDiscovery.close();
+  }
+}` :
+    `const { CoteServiceDiscovery } = require('./service.discovery');
+
+class CoteCommunication {
+  constructor(serviceName, port) {
+    this.serviceDiscovery = new CoteServiceDiscovery(serviceName, port);
+  }
+
+  async callService(serviceName, method, data) {
+    try {
+      return await this.serviceDiscovery.callService(serviceName, method, data);
+    } catch (error) {
+      console.error(\`Failed to call service \${serviceName}.\${method}:\`, error);
+      throw error;
+    }
+  }
+
+  registerHandler(method, handler) {
+    this.serviceDiscovery.registerHandler(method, handler);
+  }
+
+  async broadcast(event, data) {
+    // Broadcast to all services
+    const services = ['user', 'product', 'order'];
+    const promises = services.map(service => 
+      this.callService(service, event, data).catch(error => {
+        console.error(\`Failed to broadcast to \${service}:\`, error);
+        return null;
+      })
+    );
+    
+    return Promise.allSettled(promises);
+  }
+
+  close() {
+    this.serviceDiscovery.close();
+  }
+}
+
+module.exports = { CoteCommunication };`;
+  
+  writeFileSafe(path.join(coteDir, ts ? "communication.ts" : "communication.js"), communication);
+}
+
+function generateCoteLib(targetRoot, ts) {
+  const libDir = path.join(targetRoot, "libs", "cote");
+  fs.mkdirSync(libDir, { recursive: true });
+  
+  // Cote library package.json
+  const cotePackageJson = {
+    "name": "@fiexpress/cote",
+    "version": "1.0.0",
+    "main": ts ? "index.ts" : "index.js",
+    "scripts": {
+      "build": "nx build",
+      "test": "nx test"
+    },
+    "dependencies": {
+      "cote": "^1.0.0"
+    }
+  };
+  writeFileSafe(path.join(libDir, "package.json"), JSON.stringify(cotePackageJson, null, 2));
+  
+  // Cote library project.json
+  const coteConfig = {
+    "name": "cote",
+    "root": "libs/cote",
+    "sourceRoot": "libs/cote/src",
+    "projectType": "library",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:tsc",
+        "outputs": ["{options.outputPath}"],
+        "options": {
+          "outputPath": "dist/libs/cote",
+          "main": "libs/cote/src/index.ts",
+          "tsConfig": "libs/cote/tsconfig.lib.json"
+        }
+      }
+    }
+  };
+  writeFileSafe(path.join(libDir, "project.json"), JSON.stringify(coteConfig, null, 2));
+  
+  // Create src directory
+  fs.mkdirSync(path.join(libDir, "src"), { recursive: true });
+  
+  // Cote library index
+  const coteIndex = ts ? 
+    `export * from './lib/cote.service';
+export * from './lib/cote.communication';` :
+    `module.exports = {
+  ...require('./lib/cote.service'),
+  ...require('./lib/cote.communication')
+};`;
+  
+  writeFileSafe(path.join(libDir, "src", ts ? "index.ts" : "index.js"), coteIndex);
+  
+  // Cote service
+  const coteService = ts ? 
+    `import { CoteServiceDiscovery } from '@fiexpress/shared';
+
+export class CoteService {
+  private serviceDiscovery: CoteServiceDiscovery;
+
+  constructor(serviceName: string, port?: number) {
+    this.serviceDiscovery = new CoteServiceDiscovery(serviceName, port);
+  }
+
+  public async start() {
+    console.log('Cote service started');
+  }
+
+  public async stop() {
+    this.serviceDiscovery.close();
+    console.log('Cote service stopped');
+  }
+}` :
+    `const { CoteServiceDiscovery } = require('@fiexpress/shared');
+
+class CoteService {
+  constructor(serviceName, port) {
+    this.serviceDiscovery = new CoteServiceDiscovery(serviceName, port);
+  }
+
+  async start() {
+    console.log('Cote service started');
+  }
+
+  async stop() {
+    this.serviceDiscovery.close();
+    console.log('Cote service stopped');
+  }
+}
+
+module.exports = { CoteService };`;
+  
+  writeFileSafe(path.join(libDir, "src", "lib", ts ? "cote.service.ts" : "cote.service.js"), coteService);
+}
+
 // Helper functions for generating specific configurations
 // Removed unused function
 
@@ -1010,92 +1227,16 @@ app.listen(PORT, () => {
 
 // Removed unused function
 
-function generateExpressControllerTs() {
-  return `import { Request, Response } from 'express';
-import { AppService } from '../services/app.service';
+// Removed unused function
 
-export class AppController {
-  private appService: AppService;
+// Removed unused function
 
-  constructor() {
-    this.appService = new AppService();
-  }
+// Removed unused function
 
-  public getHello = (req: Request, res: Response) => {
-    const message = this.appService.getHello();
-    res.json({ message });
-  };
+// Removed unused function
 
-  public getHealth = (req: Request, res: Response) => {
-    const health = this.appService.getHealth();
-    res.json(health);
-  };
-}`;
-}
+// Removed unused function
 
-function generateExpressControllerJs() {
-  return `class AppController {
-  constructor(appService) {
-    this.appService = appService;
-  }
+// Removed unused function
 
-  getHello() {
-    return this.appService.getHello();
-  }
-
-  getHealth() {
-    return this.appService.getHealth();
-  }
-}
-
-module.exports = { AppController };`;
-}
-
-function generateExpressServiceTs() {
-  return `export class AppService {
-  public getHello(): string {
-    return 'Hello from Express API!';
-  }
-
-  public getHealth() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    };
-  }
-}`;
-}
-
-function generateExpressServiceJs() {
-  return `class AppService {
-  getHello() {
-    return 'Hello from Express API!';
-  }
-
-  getHealth() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    };
-  }
-}
-
-module.exports = { AppService };`;
-}
-
-function generateReactApp(targetRoot, appName, ts) {
-  // React app generation logic
-  console.log(`Generating React app: ${appName}`);
-}
-
-function generateAngularApp(targetRoot, appName, ts) {
-  // Angular app generation logic
-  console.log(`Generating Angular app: ${appName}`);
-}
-
-function generateNextApp(targetRoot, appName, ts) {
-  // Next.js app generation logic
-  console.log(`Generating Next.js app: ${appName}`);
-}
+// Removed unused function

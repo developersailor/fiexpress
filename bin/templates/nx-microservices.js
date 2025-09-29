@@ -532,7 +532,7 @@ function generateMicroserviceConfig(serviceName, ts) {
   }, null, 2);
 }
 
-function generateMicroserviceTsConfig(serviceName) {
+function generateMicroserviceTsConfig() {
   return JSON.stringify({
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
@@ -568,7 +568,7 @@ function generateMicroserviceJestConfig(serviceName) {
 };`;
 }
 
-function generateMicroserviceEslintConfig(serviceName) {
+function generateMicroserviceEslintConfig() {
   return JSON.stringify({
     "extends": ["../../.eslintrc.json"],
     "ignorePatterns": ["!**/*"],

@@ -40,6 +40,7 @@ function parseArgs() {
     monitoring: false,
     microservices: false,
     microservicesServices: [],
+    cote: false,
     queues: false,
     queuesTypes: [],
     security: false,
@@ -154,6 +155,9 @@ function parseArgs() {
           options.microservicesServices = args[++i].split(',');
         }
         break;
+      case "--cote":
+        options.cote = true;
+        break;
       case "--queues":
         options.queues = true;
         // Check for queue types
@@ -249,7 +253,7 @@ function parseArgs() {
 }
 
 async function createProject(options) {
-  const { name, ts, db, orm, jwt, casl, roles, user, jest, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
+  const { name, ts, db, orm, jwt, casl, roles, user, jest, dotenv, docker, swagger, health, rateLimit, redis, oauth, oauthProviders, graphql, websocket, template, templateEngine, css, cssFramework, e2e, e2eTools, i18n, i18nLanguages, monitoring, monitoringTools, microservices, microservicesServices, cote, queues, queuesTypes, security, securityTools, nx, nxApps, nxLibs, nxExpress, nxReact, nxAngular, nxNext } = options;
   
   // Set environment variables for scaffolding
   process.env.FIEXPRESS_TS = ts ? "yes" : "no";
@@ -283,6 +287,7 @@ async function createProject(options) {
   process.env.FIEXPRESS_MONITORING_TOOLS = monitoringTools ? monitoringTools.join(',') : 'prometheus,grafana';
   process.env.FIEXPRESS_MICROSERVICES = microservices ? "yes" : "no";
   process.env.FIEXPRESS_MICROSERVICES_SERVICES = microservicesServices ? microservicesServices.join(',') : 'user,product,order';
+  process.env.FIEXPRESS_COTE = cote ? "yes" : "no";
   process.env.FIEXPRESS_QUEUES = queues ? "yes" : "no";
   process.env.FIEXPRESS_QUEUES_TYPES = queuesTypes ? queuesTypes.join(',') : 'rabbitmq,kafka';
   process.env.FIEXPRESS_SECURITY = security ? "yes" : "no";
@@ -403,6 +408,7 @@ Options for 'new' command:
   --i18n [languages]    Add internationalization (en,tr,es)
   --monitoring [tools]  Add advanced monitoring (prometheus,grafana)
   --microservices [services] Add microservices support (user,product,order)
+  --cote                     Add Cote microservice communication
   --queues [types]         Add message queues (rabbitmq,kafka)
   --security [tools]       Add advanced security (helmet,csrf,validation,rate-limit)
   --nx                    Create Nx monorepo workspace
@@ -461,6 +467,7 @@ Options for 'new' command:
   --i18n [languages]    Add internationalization (en,tr,es)
   --monitoring [tools]  Add advanced monitoring (prometheus,grafana)
   --microservices [services] Add microservices support (user,product,order)
+  --cote                     Add Cote microservice communication
   --queues [types]         Add message queues (rabbitmq,kafka)
   --security [tools]       Add advanced security (helmet,csrf,validation,rate-limit)
   --nx                    Create Nx monorepo workspace
