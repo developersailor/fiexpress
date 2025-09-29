@@ -1,8 +1,7 @@
 ---
-globs: "**/*"
-alwaysApply: true
+globs: *.js
+alwaysApply: false
 ---
-
 # FiExpress CLI Rules
 
 ## Project Overview

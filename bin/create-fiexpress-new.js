@@ -5,7 +5,7 @@ import process from "process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { writeFileSafe, copyLocalTemplateToDst } from "./utils.js";
+import { writeFileSafe, sanitizeGeneratedPackageJson, copyLocalTemplateToDst } from "./utils.js";
 import { runPostClone } from "./scaffolding.js";
 import { generateComponent } from "./generator.js";
 import { generateWeatherDemo, generateTodoDemo, generateBlogDemo } from "./demos.js";
@@ -137,13 +137,16 @@ async function createProject(options) {
     const repoSpec = "developersailor/fiexpress-template";
     console.log(`📥 Cloning template from ${repoSpec} into ./${name}...`);
     
-    const { default: degit } = await import("degit");
+    const { degit } = await import("degit");
     const emitter = degit(repoSpec);
     
     await emitter.clone(targetRoot);
     
     // Run post-clone scaffolding
     await runPostClone(targetRoot);
+    
+    // Sanitize generated package.json
+    sanitizeGeneratedPackageJson(targetRoot);
     
     console.log("✅ Project created successfully!");
     console.log("Scaffolding complete. Next steps:");
