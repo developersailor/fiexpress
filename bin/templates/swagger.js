@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateSwaggerSupport(targetRoot, options = {}) {
   const { ts = false, auth = false } = options;
@@ -612,7 +613,6 @@ components:
 }
 
 function updatePackageJsonWithSwagger(targetRoot) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

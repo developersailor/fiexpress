@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateDockerSupport(targetRoot, options = {}) {
   const { ts = false, db = "postgres" } = options;
@@ -442,7 +443,6 @@ echo "📡 API available at: http://localhost:3000"
   writeFileSafe(path.join(targetRoot, "scripts", "docker-prod.sh"), prodScript);
   
   // Make scripts executable
-  const fs = require('fs');
   fs.chmodSync(path.join(targetRoot, "scripts", "docker-dev.sh"), '755');
   fs.chmodSync(path.join(targetRoot, "scripts", "docker-prod.sh"), '755');
 }

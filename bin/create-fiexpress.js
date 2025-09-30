@@ -54,6 +54,43 @@ function parseArgs() {
     nxNext: false
   };
 
+  // Check for --default flag first
+  const hasDefaultFlag = args.includes('--default');
+  if (hasDefaultFlag) {
+    // Enable all features except nx and microservices
+    options.ts = true;
+    options.jwt = true;
+    options.casl = true;
+    options.roles = true;
+    options.user = true;
+    options.jest = true;
+    options.docker = true;
+    options.swagger = true;
+    options.health = true;
+    options.rateLimit = true;
+    options.redis = true;
+    options.oauth = true;
+    options.oauthProviders = ['google', 'github', 'facebook'];
+    options.graphql = true;
+    options.websocket = true;
+    options.template = true;
+    options.templateEngine = 'ejs';
+    options.css = true;
+    options.cssFramework = 'bootstrap';
+    options.e2e = true;
+    options.e2eTools = ['playwright', 'cypress'];
+    options.i18n = true;
+    options.i18nLanguages = ['en', 'tr', 'es'];
+    options.monitoring = true;
+    options.monitoringTools = ['prometheus', 'grafana'];
+    options.cote = true;
+    options.queues = true;
+    options.queuesTypes = ['rabbitmq', 'kafka'];
+    options.security = true;
+    options.securityTools = ['helmet', 'csrf', 'validation', 'rate-limit'];
+    // nx and microservices remain false as requested
+  }
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     switch (arg) {
@@ -594,6 +631,7 @@ Usage:
   npx fiexpress --version                Show version
 
 Options for 'new' command:
+  --default              Enable all features (except nx and microservices)
   --ts                    Enable TypeScript support
   --db <database>        Database type (postgres|mysql|mongo)
   --orm <orm>            ORM (prisma|sequelize|drizzle|mongoose|none)
@@ -631,6 +669,7 @@ Options for 'new' command:
 
 Examples:
   npx fiexpress new my-api
+  npx fiexpress new my-api --default
   npx fiexpress new my-api --ts --db postgres --jwt --casl
   npx fiexpress new my-nx-workspace --nx --nx-apps api,frontend --nx-libs shared,types
   npx fiexpress new my-monorepo --nx --nx-express --nx-react --ts
@@ -653,6 +692,7 @@ Usage:
   npx fiexpress --version                Show version
 
 Options for 'new' command:
+  --default              Enable all features (except nx and microservices)
   --ts                    Enable TypeScript support
   --db <database>        Database type (postgres|mysql|mongo)
   --orm <orm>            ORM (prisma|sequelize|drizzle|mongoose|none)
@@ -690,6 +730,7 @@ Options for 'new' command:
 
 Examples:
   npx fiexpress new my-api
+  npx fiexpress new my-api --default
   npx fiexpress new my-api --ts --db postgres --jwt --casl
   npx fiexpress new my-nx-workspace --nx --nx-apps api,frontend --nx-libs shared,types
   npx fiexpress new my-monorepo --nx --nx-express --nx-react --ts
