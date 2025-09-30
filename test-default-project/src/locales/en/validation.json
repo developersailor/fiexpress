@@ -1,0 +1,22 @@
+{
+  "validation.required": "This field is required",
+  "validation.email": "Please enter a valid email address",
+  "validation.password": "Password must be at least 8 characters long",
+  "validation.confirmPassword": "Passwords do not match",
+  "validation.minLength": "Must be at least {{min}} characters long",
+  "validation.maxLength": "Must be no more than {{max}} characters long",
+  "validation.min": "Must be at least {{min}}",
+  "validation.max": "Must be no more than {{max}}",
+  "validation.numeric": "Must be a number",
+  "validation.alpha": "Must contain only letters",
+  "validation.alphanumeric": "Must contain only letters and numbers",
+  "validation.url": "Must be a valid URL",
+  "validation.phone": "Must be a valid phone number",
+  "validation.date": "Must be a valid date",
+  "validation.time": "Must be a valid time",
+  "validation.datetime": "Must be a valid date and time",
+  "validation.unique": "This value is already taken",
+  "validation.exists": "This value does not exist",
+  "validation.regex": "Must match the required pattern",
+  "validation.custom": "Custom validation failed"
+}

@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateMonitoringSupport(targetRoot, options = {}) {
   const { ts = false, tools = ['prometheus', 'grafana'] } = options;
@@ -1216,7 +1217,6 @@ module.exports.default = alertingSystem;
 }
 
 function updatePackageJsonWithMonitoring(targetRoot, tools) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

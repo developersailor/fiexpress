@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateAdvancedSecuritySupport(targetRoot, options = {}) {
   const { ts = false, tools = ['helmet', 'csrf', 'validation', 'rate-limit'] } = options;
@@ -1137,7 +1138,6 @@ module.exports = SecurityTests;
 }
 
 function updatePackageJsonWithSecurity(targetRoot) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

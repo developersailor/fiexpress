@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateWebSocketSupport(targetRoot, options = {}) {
   const { ts = false } = options;
@@ -1270,7 +1271,6 @@ module.exports = router;
 }
 
 function updatePackageJsonWithWebSocket(targetRoot) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

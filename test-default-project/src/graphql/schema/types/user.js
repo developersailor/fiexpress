@@ -1,0 +1,54 @@
+import { gql } from 'apollo-server-express';
+
+export const userTypeDefs = gql`
+  type User {
+    id: ID!
+    email: String!
+    name: String!
+    avatar: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type AuthPayload {
+    token: String!
+    user: User!
+  }
+
+  input CreateUserInput {
+    email: String!
+    name: String!
+    password: String!
+  }
+
+  input UpdateUserInput {
+    email: String
+    name: String
+    avatar: String
+  }
+
+  input LoginInput {
+    email: String!
+    password: String!
+  }
+
+  extend type Query {
+    users: [User!]!
+    user(id: ID!): User
+    me: User
+  }
+
+  extend type Mutation {
+    createUser(input: CreateUserInput!): AuthPayload!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    deleteUser(id: ID!): Boolean!
+    login(input: LoginInput!): AuthPayload!
+    logout: Boolean!
+  }
+
+  extend type Subscription {
+    userCreated: User!
+    userUpdated: User!
+    userDeleted: ID!
+  }
+`;

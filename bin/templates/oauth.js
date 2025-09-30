@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateOAuthSupport(targetRoot, options = {}) {
   const { ts = false, providers = ['google', 'github', 'facebook'] } = options;
@@ -634,7 +635,6 @@ NODE_ENV=development`;
 }
 
 function updatePackageJsonWithOAuth(targetRoot, providers) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

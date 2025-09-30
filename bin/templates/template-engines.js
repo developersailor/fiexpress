@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateTemplateEngineSupport(targetRoot, options = {}) {
   const { ts = false, engine = 'ejs' } = options;
@@ -459,8 +460,8 @@ function generateTemplateFiles(targetRoot, engine) {
   
   // Create directories
   [viewsDir, layoutsDir, partialsDir].forEach(dir => {
-    if (!require('fs').existsSync(dir)) {
-      require('fs').mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   });
   
@@ -963,8 +964,8 @@ function generateStaticAssets(targetRoot) {
   
   // Create directories
   [publicDir, cssDir, jsDir, imagesDir].forEach(dir => {
-    if (!require('fs').existsSync(dir)) {
-      require('fs').mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   });
   
@@ -1301,7 +1302,6 @@ window.AppUtils = {
 }
 
 function updatePackageJsonWithTemplateEngine(targetRoot, engine) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

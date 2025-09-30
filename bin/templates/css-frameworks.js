@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateCSSFrameworkSupport(targetRoot, options = {}) {
   const { ts = false, framework = 'bootstrap' } = options;
@@ -766,7 +767,6 @@ function generateCustomCSS(framework) {
 }
 
 function updatePackageJsonWithCSSFramework(targetRoot, framework) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

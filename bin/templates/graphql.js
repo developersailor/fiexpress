@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateGraphQLSupport(targetRoot, options = {}) {
   const { ts = false, subscriptions = true } = options;
@@ -918,7 +919,6 @@ type Subscription {
 }
 
 function updatePackageJsonWithGraphQL(targetRoot, subscriptions) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

@@ -1,0 +1,18 @@
+{
+  "error.400": "Geçersiz İstek",
+  "error.401": "Yetkisiz",
+  "error.403": "Yasak",
+  "error.404": "Bulunamadı",
+  "error.500": "Sunucu Hatası",
+  "error.network": "Ağ Hatası",
+  "error.timeout": "İstek Zaman Aşımı",
+  "error.validation": "Doğrulama Hatası",
+  "error.database": "Veritabanı Hatası",
+  "error.auth": "Kimlik Doğrulama Hatası",
+  "error.permission": "İzin Reddedildi",
+  "error.not.found": "Kaynak bulunamadı",
+  "error.already.exists": "Kaynak zaten mevcut",
+  "error.invalid.input": "Geçersiz giriş",
+  "error.server.error": "Sunucu hatası oluştu",
+  "error.unknown": "Bilinmeyen hata oluştu"
+}

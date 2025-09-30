@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateRedisSupport(targetRoot, options = {}) {
   const { ts = false, session = true } = options;
@@ -1027,7 +1028,6 @@ networks:
 }
 
 function updatePackageJsonWithRedis(targetRoot, session) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

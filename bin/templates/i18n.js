@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateI18nSupport(targetRoot, options = {}) {
   const { ts = false, languages = ['en', 'tr', 'es'] } = options;
@@ -321,8 +322,8 @@ function generateTranslationFiles(targetRoot, languages) {
   
   languages.forEach(lang => {
     const langDir = path.join(localesDir, lang);
-    if (!require('fs').existsSync(langDir)) {
-      require('fs').mkdirSync(langDir, { recursive: true });
+    if (!fs.existsSync(langDir)) {
+      fs.mkdirSync(langDir, { recursive: true });
     }
     
     // Generate translation files for each language
@@ -1055,7 +1056,6 @@ function generateI18nSampleTemplate() {
 }
 
 function updatePackageJsonWithI18n(targetRoot) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

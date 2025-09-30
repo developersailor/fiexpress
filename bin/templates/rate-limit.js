@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateRateLimitSupport(targetRoot, options = {}) {
   const { ts = false, redis = false } = options;
@@ -632,7 +633,6 @@ module.exports = router;
 }
 
 function updatePackageJsonWithRateLimit(targetRoot, redis) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

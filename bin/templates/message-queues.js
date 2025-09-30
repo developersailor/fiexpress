@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateMessageQueueSupport(targetRoot, options = {}) {
   const { ts = false, queues = ['rabbitmq', 'kafka'] } = options;
@@ -916,7 +917,6 @@ module.exports.default = QueueMiddleware;
 }
 
 function updatePackageJsonWithQueues(targetRoot, queues) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {

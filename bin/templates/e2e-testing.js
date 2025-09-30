@@ -1,5 +1,6 @@
 import { writeFileSafe } from "../utils.js";
 import path from "path";
+import fs from "fs";
 
 export function generateE2ETestingSupport(targetRoot, options = {}) {
   const { ts = false, tools = ['playwright', 'cypress'] } = options;
@@ -464,8 +465,8 @@ module.exports.default = TestUtils;
 function generateTestFixtures(targetRoot, ts) {
   // Create test fixtures directory
   const fixturesDir = path.join(targetRoot, "tests", "fixtures");
-  if (!require('fs').existsSync(fixturesDir)) {
-    require('fs').mkdirSync(fixturesDir, { recursive: true });
+  if (!fs.existsSync(fixturesDir)) {
+    fs.mkdirSync(fixturesDir, { recursive: true });
   }
   
   // User fixtures
@@ -920,8 +921,8 @@ module.exports.default = databaseFixtures;
 function generateTestSuites(targetRoot, ts, tools) {
   // Create test suites directory
   const suitesDir = path.join(targetRoot, "tests", "suites");
-  if (!require('fs').existsSync(suitesDir)) {
-    require('fs').mkdirSync(suitesDir, { recursive: true });
+  if (!fs.existsSync(suitesDir)) {
+    fs.mkdirSync(suitesDir, { recursive: true });
   }
   
   // Generate test suites for each tool
@@ -1110,8 +1111,8 @@ describe('User Management', () => {
 function generateTestData(targetRoot) {
   // Create test data directory
   const dataDir = path.join(targetRoot, "tests", "data");
-  if (!require('fs').existsSync(dataDir)) {
-    require('fs').mkdirSync(dataDir, { recursive: true });
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
   
   // Test data files
@@ -1130,7 +1131,6 @@ function generateTestData(targetRoot) {
 }
 
 function updatePackageJsonWithE2ETesting(targetRoot, tools) {
-  const fs = require('fs');
   const pkgPath = path.join(targetRoot, "package.json");
   
   try {
